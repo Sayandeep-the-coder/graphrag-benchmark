@@ -11,10 +11,12 @@ import json
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 load_dotenv()
 
@@ -32,6 +34,7 @@ from pipelines import pipeline1_llm_only as p1
 from pipelines.pipeline2_basic_rag import query as p2
 from pipelines.pipeline3_graphrag import query as p3
 from evaluation.accuracy import evaluate_all_pipelines
+from utils.security import sanitize_error
 
 app = FastAPI(
     title="GraphRAG Inference Benchmark",
@@ -58,20 +61,15 @@ executor = ThreadPoolExecutor(max_workers=3)
 async def compare(request: CompareRequest):
     """
     Run all 3 pipelines in parallel on the same query.
-
-    Returns side-by-side answers, metrics, and token reduction percentage.
-    If ground_truth is provided, also runs accuracy evaluation.
     """
     loop = asyncio.get_event_loop()
 
-    # Run all 3 pipelines in parallel using thread pool
-    r1_future = loop.run_in_executor(executor, p1.run, request.query)
-    r2_future = loop.run_in_executor(executor, p2.run, request.query, request.top_k, request.namespace)
-    r3_future = loop.run_in_executor(executor, p3.run, request.query)
+    r1_future = loop.run_in_executor(executor, partial(p1.run, request.query))
+    r2_future = loop.run_in_executor(executor, partial(p2.run, request.query, top_k=request.top_k, namespace=request.namespace))
+    r3_future = loop.run_in_executor(executor, partial(p3.run, request.query))
 
     r1, r2, r3 = await asyncio.gather(r1_future, r2_future, r3_future)
 
-    # Accuracy evaluation (if ground truth provided)
     accuracy = None
     if request.ground_truth:
         try:
@@ -82,9 +80,8 @@ async def compare(request: CompareRequest):
                 ground_truths=[request.ground_truth],
             )
         except Exception as e:
-            print(f"Evaluation failed (likely missing HF_TOKEN): {e}")
+            print(sanitize_error(f"Evaluation failed: {e}"))
 
-    # Calculate token reduction percentage (GraphRAG vs Basic RAG)
     token_reduction_pct = None
     if r2["metrics"]["total_tokens"] > 0 and r3["metrics"]["total_tokens"] > 0:
         token_reduction_pct = (
@@ -101,68 +98,96 @@ async def compare(request: CompareRequest):
     )
 
 
+@app.post("/compare/stream")
+async def compare_stream(request: CompareRequest):
+    """
+    Stream all 3 pipelines in parallel via Server-Sent Events (SSE).
+    """
+    async def event_generator():
+        queue = asyncio.Queue()
+
+        async def consume_pipeline(pipeline_id, gen):
+            try:
+                async for chunk in gen:
+                    chunk["pipeline"] = pipeline_id
+                    await queue.put(chunk)
+            except Exception as e:
+                err_msg = sanitize_error(f"Error: {e}")
+                await queue.put({"pipeline": pipeline_id, "type": "chunk", "text": err_msg, "tokens": 0})
+                await queue.put({"pipeline": pipeline_id, "type": "done", "answer": err_msg, "metrics": {}})
+
+        # Start all consumers
+        tasks = [
+            asyncio.create_task(consume_pipeline("llm_only", p1.run_stream(request.query))),
+            asyncio.create_task(consume_pipeline("basic_rag", p2.run_stream(request.query, request.top_k, request.namespace))),
+            asyncio.create_task(consume_pipeline("graphrag", p3.run_stream(request.query, "hybrid", 2))),
+        ]
+
+        while True:
+            if all(t.done() for t in tasks) and queue.empty():
+                break
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=0.1)
+                yield f"data: {json.dumps(item)}\n\n"
+            except asyncio.TimeoutError:
+                continue
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health():
-    """Health check endpoint."""
     return HealthResponse(status="ok")
 
 
 def _run_rag_ingest():
-    """Background task: run Pipeline 2 Pinecone ingest."""
     from pipelines.pipeline2_basic_rag.ingest import ingest_documents
-    ingest_documents()
+    kb_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "medical")
+    ingest_documents(input_path=kb_path)
 
 
 def _run_graphrag_ingest():
-    """Background task: run Pipeline 3 GraphRAG ingest."""
     from pipelines.pipeline3_graphrag.ingest import ingest_documents
     ingest_documents()
 
 
 @app.post("/ingest/rag", response_model=IngestStatus)
 async def ingest_rag(background_tasks: BackgroundTasks):
-    """Trigger Pipeline 2 (Pinecone) ingest as a background task."""
     background_tasks.add_task(_run_rag_ingest)
-    return IngestStatus(
-        pipeline="basic-rag",
-        status="started",
-        message="Ingest running in background",
-    )
+    return IngestStatus(pipeline="basic-rag", status="started", message="Ingest running")
 
 
 @app.post("/ingest/graphrag", response_model=IngestStatus)
 async def ingest_graphrag(background_tasks: BackgroundTasks):
-    """Trigger Pipeline 3 (GraphRAG) ingest as a background task."""
     background_tasks.add_task(_run_graphrag_ingest)
-    return IngestStatus(
-        pipeline="graphrag",
-        status="started",
-        message="Ingest running in background",
-    )
+    return IngestStatus(pipeline="graphrag", status="started", message="Ingest running")
+
+
+@app.get("/knowledge-base")
+async def get_knowledge_base():
+    kb_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "medical", "knowledge_base.txt")
+    if not os.path.exists(kb_path):
+        return {"content": "File not found.", "total_tokens": 0}
+    try:
+        with open(kb_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            token_estimate = int(len(content.split()) * 1.3)
+            return {"content": content, "total_tokens": token_estimate}
+    except Exception as e:
+        return {"content": f"Error: {str(e)}", "total_tokens": 0}
 
 
 @app.get("/metrics/summary")
 async def metrics_summary():
-    """
-    Aggregate and return summary statistics from all benchmark JSON reports.
-    """
     results_dir = "./results"
     os.makedirs(results_dir, exist_ok=True)
-
     reports = []
     for filepath in sorted(glob.glob(f"{results_dir}/benchmark_*.json")):
         with open(filepath) as f:
             reports.append(json.load(f))
-
     if not reports:
-        return {
-            "total_reports": 0,
-            "message": "No benchmark reports found. Run: python evaluation/benchmark_runner.py",
-        }
-
-    # Use the latest report for summary
+        return {"total_reports": 0, "message": "No reports found."}
     latest = reports[-1]
-
     return {
         "total_reports": len(reports),
         "latest_generated_at": latest.get("generated_at"),
@@ -181,6 +206,5 @@ async def metrics_summary():
 
 if __name__ == "__main__":
     import uvicorn
-
     port = int(os.getenv("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)

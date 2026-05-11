@@ -8,7 +8,7 @@
 export default function MetricsTable({ metrics }) {
   if (!metrics) return null;
 
-  const { llm_only, basic_rag } = metrics;
+  const { llm_only, basic_rag, graphrag } = metrics;
 
   const rows = [
     {
@@ -16,24 +16,27 @@ export default function MetricsTable({ metrics }) {
       values: [
         llm_only.total_tokens,
         basic_rag.total_tokens,
+        graphrag?.total_tokens,
       ],
-      format: (v) => v.toLocaleString(),
+      format: (v) => (v != null ? v.toLocaleString() : "-"),
     },
     {
       label: "Latency",
       values: [
         llm_only.latency_ms,
         basic_rag.latency_ms,
+        graphrag?.latency_ms,
       ],
-      format: (v) => `${v.toFixed(0)}ms`,
+      format: (v) => (v != null ? `${v.toFixed(0)}ms` : "-"),
     },
     {
       label: "Cost",
       values: [
         llm_only.cost_usd,
         basic_rag.cost_usd,
+        graphrag?.cost_usd,
       ],
-      format: (v) => `$${v.toFixed(8)}`,
+      format: (v) => (v != null ? `$${v.toFixed(8)}` : "-"),
     },
   ];
 
@@ -55,11 +58,16 @@ export default function MetricsTable({ metrics }) {
               <th className="text-right py-3 px-4 text-yellow-400 font-medium">
                 Basic RAG
               </th>
+              <th className="text-right py-3 px-4 text-green-400 font-medium">
+                GraphRAG
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
-              const minVal = Math.min(...row.values);
+              const numericValues = row.values.filter((v) => v != null);
+              const minVal = numericValues.length > 0 ? Math.min(...numericValues) : null;
+              
               return (
                 <tr
                   key={row.label}
@@ -72,7 +80,7 @@ export default function MetricsTable({ metrics }) {
                     <td
                       key={i}
                       className={`text-right py-3 px-4 font-mono ${
-                        val === minVal
+                        val != null && val === minVal
                           ? "text-green-400 font-bold"
                           : "text-gray-400"
                       }`}

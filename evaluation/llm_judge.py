@@ -6,16 +6,14 @@ to grade each pipeline answer as PASS or FAIL against ground truth.
 """
 
 import os
-
 from dotenv import load_dotenv
-from huggingface_hub import InferenceClient
+from google import genai
 
 load_dotenv()
 
-HF_TOKEN = os.getenv("HF_TOKEN")
-JUDGE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-
-client = InferenceClient(model=JUDGE_MODEL, token=HF_TOKEN)
+# We use Gemma for the judge to stay consistent with the "Never Gemini" requirement.
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+JUDGE_MODEL = "models/gemma-4-26b-a4b-it"
 
 JUDGE_PROMPT = """Grade the system's answer.
 Question: {question}
@@ -26,18 +24,9 @@ Reply with only PASS or FAIL.
 PASS = the system answer correctly addresses the question with no major errors.
 FAIL = the answer is wrong, missing, or contradicts the correct answer."""
 
-
 def llm_judge(question: str, answer: str, ground_truth: str) -> dict:
     """
     Grade a single answer against ground truth using LLM-as-a-Judge.
-
-    Args:
-        question: The original question asked.
-        answer: The pipeline's generated answer.
-        ground_truth: The correct reference answer.
-
-    Returns:
-        Dict with 'verdict' (PASS/FAIL) and 'raw_output'.
     """
     prompt = JUDGE_PROMPT.format(
         question=question,
@@ -46,17 +35,17 @@ def llm_judge(question: str, answer: str, ground_truth: str) -> dict:
     )
 
     try:
-        response = client.chat_completion(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            temperature=0.0,
+        response = client.models.generate_content(
+            model=JUDGE_MODEL,
+            contents=prompt,
         )
-        if response and response.choices and response.choices[0].message.content:
-            raw_output = response.choices[0].message.content.strip()
+        if response and hasattr(response, "text") and response.text:
+            raw_output = response.text.strip()
         else:
             raw_output = "FAIL (No response)"
     except Exception as e:
         raw_output = f"FAIL (Error: {str(e)})"
+    
     verdict = "PASS" if "PASS" in raw_output.upper() else "FAIL"
 
     return {"verdict": verdict, "raw_output": raw_output}

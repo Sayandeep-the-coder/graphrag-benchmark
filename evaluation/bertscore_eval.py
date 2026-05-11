@@ -36,7 +36,14 @@ def compute_bertscore(candidates: list[str], references: list[str]) -> dict:
     )
     
     if not results or "precision" not in results:
-        return 0.0, 0.0, 0.0, 0.0
+        return {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_rescaled": 0.0,
+            "f1_raw": 0.0,
+            "bonus_achieved_rescaled": False,
+            "bonus_achieved_raw": False,
+        }
 
     # Average scores across all pairs
     precision = sum(results["precision"]) / len(results["precision"])

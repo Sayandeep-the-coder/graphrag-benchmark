@@ -9,10 +9,10 @@ export default function AccuracyBadge({ verdict }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold tracking-wide ${
+      className={`badge-premium gap-1.5 ${
         isPASS
-          ? "bg-green-500/15 text-green-400 border border-green-500/30"
-          : "bg-red-500/15 text-red-400 border border-red-500/30"
+          ? "bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
+          : "bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
       }`}
     >
       {isPASS ? (
