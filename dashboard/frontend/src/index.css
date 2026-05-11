@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-900 text-gray-100 font-sans;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-800;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-600 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface-800 rounded-xl border border-surface-600 p-6;
+  }
+
+  .btn-primary {
+    @apply w-full py-3 px-6 rounded-xl font-semibold text-white
+           bg-gradient-to-r from-blue-600 to-blue-500
+           hover:from-blue-500 hover:to-blue-400
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200 ease-out
+           shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40;
+  }
+
+  .input-field {
+    @apply w-full bg-surface-700 border border-surface-600 rounded-xl
+           px-4 py-3 text-gray-100 placeholder-gray-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+           transition-all duration-200;
+  }
+}
+
+/* Spinner animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+}

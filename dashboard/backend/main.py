@@ -1,0 +1,186 @@
+"""
+FastAPI Dashboard Backend
+
+Runs all 3 inference pipelines in parallel via /compare endpoint.
+Provides ingest triggers, health check, and benchmark summary.
+"""
+
+import asyncio
+import glob
+import json
+import os
+import sys
+from concurrent.futures import ThreadPoolExecutor
+
+from dotenv import load_dotenv
+from fastapi import BackgroundTasks, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
+
+# Add project root to Python path so pipeline imports work
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
+from dashboard.backend.models import (
+    CompareRequest,
+    CompareResponse,
+    HealthResponse,
+    IngestStatus,
+    PipelineResult,
+)
+from pipelines import pipeline1_llm_only as p1
+from pipelines.pipeline2_basic_rag import query as p2
+from pipelines.pipeline3_graphrag import query as p3
+from evaluation.accuracy import evaluate_all_pipelines
+
+app = FastAPI(
+    title="GraphRAG Inference Benchmark",
+    description="Compare LLM-Only, Basic RAG, and GraphRAG pipelines",
+    version="1.0.0",
+)
+
+# CORS — allow React frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+executor = ThreadPoolExecutor(max_workers=3)
+
+
+@app.post("/compare", response_model=CompareResponse)
+async def compare(request: CompareRequest):
+    """
+    Run all 3 pipelines in parallel on the same query.
+
+    Returns side-by-side answers, metrics, and token reduction percentage.
+    If ground_truth is provided, also runs accuracy evaluation.
+    """
+    loop = asyncio.get_event_loop()
+
+    # Run all 3 pipelines in parallel using thread pool
+    r1_future = loop.run_in_executor(executor, p1.run, request.query)
+    r2_future = loop.run_in_executor(executor, p2.run, request.query, request.top_k, request.namespace)
+    r3_future = loop.run_in_executor(executor, p3.run, request.query)
+
+    r1, r2, r3 = await asyncio.gather(r1_future, r2_future, r3_future)
+
+    # Accuracy evaluation (if ground truth provided)
+    accuracy = None
+    if request.ground_truth:
+        try:
+            accuracy = evaluate_all_pipelines(
+                questions=[request.query],
+                p1_answers=[r1["answer"]],
+                p2_answers=[r2["answer"]],
+                ground_truths=[request.ground_truth],
+            )
+        except Exception as e:
+            print(f"Evaluation failed (likely missing HF_TOKEN): {e}")
+
+    # Calculate token reduction percentage (GraphRAG vs Basic RAG)
+    token_reduction_pct = None
+    if r2["metrics"]["total_tokens"] > 0 and r3["metrics"]["total_tokens"] > 0:
+        token_reduction_pct = (
+            (r2["metrics"]["total_tokens"] - r3["metrics"]["total_tokens"]) 
+            / r2["metrics"]["total_tokens"] * 100
+        )
+
+    return CompareResponse(
+        llm_only=PipelineResult(**r1),
+        basic_rag=PipelineResult(**r2),
+        graphrag=PipelineResult(**r3),
+        token_reduction_pct=token_reduction_pct,
+        accuracy=accuracy,
+    )
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health():
+    """Health check endpoint."""
+    return HealthResponse(status="ok")
+
+
+def _run_rag_ingest():
+    """Background task: run Pipeline 2 Pinecone ingest."""
+    from pipelines.pipeline2_basic_rag.ingest import ingest_documents
+    ingest_documents()
+
+
+def _run_graphrag_ingest():
+    """Background task: run Pipeline 3 GraphRAG ingest."""
+    from pipelines.pipeline3_graphrag.ingest import ingest_documents
+    ingest_documents()
+
+
+@app.post("/ingest/rag", response_model=IngestStatus)
+async def ingest_rag(background_tasks: BackgroundTasks):
+    """Trigger Pipeline 2 (Pinecone) ingest as a background task."""
+    background_tasks.add_task(_run_rag_ingest)
+    return IngestStatus(
+        pipeline="basic-rag",
+        status="started",
+        message="Ingest running in background",
+    )
+
+
+@app.post("/ingest/graphrag", response_model=IngestStatus)
+async def ingest_graphrag(background_tasks: BackgroundTasks):
+    """Trigger Pipeline 3 (GraphRAG) ingest as a background task."""
+    background_tasks.add_task(_run_graphrag_ingest)
+    return IngestStatus(
+        pipeline="graphrag",
+        status="started",
+        message="Ingest running in background",
+    )
+
+
+@app.get("/metrics/summary")
+async def metrics_summary():
+    """
+    Aggregate and return summary statistics from all benchmark JSON reports.
+    """
+    results_dir = "./results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    reports = []
+    for filepath in sorted(glob.glob(f"{results_dir}/benchmark_*.json")):
+        with open(filepath) as f:
+            reports.append(json.load(f))
+
+    if not reports:
+        return {
+            "total_reports": 0,
+            "message": "No benchmark reports found. Run: python evaluation/benchmark_runner.py",
+        }
+
+    # Use the latest report for summary
+    latest = reports[-1]
+
+    return {
+        "total_reports": len(reports),
+        "latest_generated_at": latest.get("generated_at"),
+        "total_queries": latest.get("total_queries"),
+        "summary": latest.get("summary"),
+        "accuracy": {
+            pipeline: {
+                "judge_pass_rate": data["llm_judge"]["pass_rate"],
+                "bertscore_f1": data["bertscore"]["f1_rescaled"],
+                "max_bonus": data["max_bonus_achieved"],
+            }
+            for pipeline, data in latest.get("accuracy", {}).items()
+        },
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
