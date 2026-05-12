@@ -243,7 +243,7 @@ Expected output:
 
 | Issue | Fix |
 |-------|-----|
-| `Pinecone index not found` | Create index with correct dimensions (384) |
+| `Pinecone index not found` | Create index with correct dimensions (3072) |
 | `TigerGraph 401 Unauthorized` | Check TG_USERNAME and TG_PASSWORD in .env |
 | `Gemini 429 Too Many Requests` | Exponential backoff already in `utils/retry.py` |
 | `GraphRAG service 503` | `docker-compose logs graphrag` to debug |

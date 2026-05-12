@@ -20,7 +20,7 @@ from utils.security import sanitize_error
 load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-model_id = "models/gemini-2.5-flash"
+model_id = "models/gemma-4-26b-a4b-it"
 
 
 def run(query: str) -> dict:
@@ -109,7 +109,5 @@ async def run_stream(query: str):
 
     metrics.prompt_tokens = prompt_tokens
     metrics.record(prompt, answer, start)
-    metrics.total_tokens = metrics.prompt_tokens + metrics.completion_tokens
-    metrics.cost_usd = metrics.total_tokens / 1_000_000 * 0.075
 
     yield {"type": "done", "metrics": metrics.to_dict(), "answer": answer}

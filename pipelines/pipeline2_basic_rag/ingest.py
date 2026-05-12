@@ -1,12 +1,12 @@
 import argparse
 import glob
 import os
-import torch
+import google.generativeai as genai
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pinecone import Pinecone
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
 from utils.retry import with_retry
 
 load_dotenv()
@@ -18,18 +18,18 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark")
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 100
 BATCH_SIZE = 100
-# Using a local embedding model to avoid Gemini
-EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
+# Using Gemini embedding model
+EMBEDDING_MODEL_NAME = "models/gemini-embedding-001"
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # --- Clients ---
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(PINECONE_INDEX_NAME)
-embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
 
 
 def ingest_documents(input_path: str, namespace: str = "medical-rag"):
     """
-    Ingest text from input_path into Pinecone using local embeddings.
+    Ingest text from input_path into Pinecone using Gemini embeddings.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -53,8 +53,17 @@ def ingest_documents(input_path: str, namespace: str = "medical-rag"):
     for i in tqdm(range(0, len(all_chunks), BATCH_SIZE), desc="Ingesting to Pinecone"):
         batch_chunks = all_chunks[i : i + BATCH_SIZE]
         
-        # Local embedding generation
-        embeddings = embed_model.encode(batch_chunks).tolist()
+        # Gemini embedding generation
+        def _get_embeddings():
+            return genai.embed_content(
+                model=EMBEDDING_MODEL_NAME,
+                content=batch_chunks,
+                task_type="retrieval_document"
+            )["embedding"]
+            
+        embeddings = with_retry(_get_embeddings)
+        if not embeddings:
+            continue
         
         vectors = []
         for j, (chunk, emb) in enumerate(zip(batch_chunks, embeddings)):

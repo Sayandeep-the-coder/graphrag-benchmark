@@ -9,7 +9,7 @@ This system allows for side-by-side performance comparison (latency, token usage
 | # | Pipeline | Method | Retrieval Logic | Expected Token Usage |
 |---|----------|--------|-----------------|----------------------|
 | **1** | **LLM-Only** | Direct Google GenAI call (`gemma-4`) | No context provided. Used as a baseline for hallucination risk. | Very Low |
-| **2** | **Basic RAG** | Pinecone Vector Search + `gemma-4` | Uses Gemini `text-embedding-004`. Implements **Dynamic Top-K Hopping** to fetch chunks and filter based on a score cliff. | High |
+| **2** | **Basic RAG** | Pinecone Vector Search + `gemma-4` | Uses Gemini `gemini-embedding-001` (3072 dimensions). Implements **Dynamic Top-K Hopping** to fetch chunks and filter based on a score cliff. | High |
 | **3** | **GraphRAG** | TigerGraph Multi-Hop Graph + `gemma-4` | REST API graph traversal fetching multi-hop relational entities (hybrid/community/sibling modes). | Medium |
 
 > [!NOTE]

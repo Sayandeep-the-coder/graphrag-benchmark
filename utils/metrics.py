@@ -24,6 +24,10 @@ class PipelineMetrics:
         self.latency_ms = 0.0
         self.cost_usd = 0.0
 
+    @property
+    def total_tokens(self) -> int:
+        return self.prompt_tokens + self.completion_tokens
+
     def record(self, prompt: str, response: str, start_time: float):
         """Record metrics for a completed LLM call."""
         self.prompt_tokens = len(enc.encode(prompt))

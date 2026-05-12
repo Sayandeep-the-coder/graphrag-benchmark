@@ -80,7 +80,7 @@ Build a three-pipeline benchmark system that proves:
 | ID | Requirement |
 |----|-------------|
 | P2-01 | Chunk dataset using RecursiveCharacterTextSplitter (chunk_size=512, overlap=64) |
-| P2-02 | Embed chunks using `sentence-transformers/all-MiniLM-L6-v2` |
+| P2-02 | Embed chunks using `gemini-embedding-001` (3072 dimensions) |
 | P2-03 | Store embeddings in Pinecone serverless index |
 | P2-04 | At query time, retrieve top-k=5 semantically similar chunks |
 | P2-05 | Inject retrieved chunks as context into Gemini prompt |
@@ -142,7 +142,7 @@ Build a three-pipeline benchmark system that proves:
 | Vector DB | Pinecone Serverless (free tier) |
 | Graph DB | TigerGraph Savanna / Community Edition |
 | GraphRAG Service | github.com/tigergraph/graphrag (Docker) |
-| Embeddings | sentence-transformers/all-MiniLM-L6-v2 |
+| Embeddings | gemini-embedding-001 (3072 dimensions) |
 | Backend | FastAPI (Python 3.11+) |
 | Frontend | React + Tailwind CSS |
 | Accuracy Eval | BERTScore + HuggingFace Inference API |

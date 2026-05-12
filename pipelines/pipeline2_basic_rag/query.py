@@ -10,13 +10,14 @@ import time
 import httpx
 import json
 import asyncio
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
+# Removed SentenceTransformer
 
 from utils.metrics import PipelineMetrics
 from utils.retry import with_retry
+from utils.security import sanitize_error
 
 load_dotenv()
 
@@ -24,24 +25,22 @@ load_dotenv()
 _pc = None
 _index = None
 _client = None
-_embed_model = None
 _model_id = "models/gemma-4-26b-a4b-it"
+_embed_model_id = "models/gemini-embedding-001"
 
 TOP_K = 3  # Number of chunks to retrieve (optimized for medical data)
 
 
 def _get_clients():
     """Lazily initialize external clients on first call."""
-    global _pc, _index, _client, _embed_model
+    global _pc, _index, _client
     if _pc is None or _index is None:
         _pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         _index = _pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
     if _client is None:
-        _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    if _embed_model is None:
-        # Using a high-quality local embedding model to avoid Gemini API
-        _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _index, _client, _embed_model
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        _client = genai
+    return _index, _client
 
 
 def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
@@ -49,11 +48,25 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     Run a query through the Basic RAG pipeline.
     """
     metrics = PipelineMetrics("Basic-RAG")
-    index, client, embed_model = _get_clients()
+    index, client = _get_clients()
 
-    # Step 1: Embed query (Local Gemma-friendly embedding)
+    # Step 1: Embed query (Gemini embedding)
     start_embed = time.time()
-    query_embedding = embed_model.encode(query).tolist()
+    def _embed():
+        return genai.embed_content(
+            model=_embed_model_id,
+            content=query,
+            task_type="retrieval_query"
+        )["embedding"]
+    
+    query_embedding = with_retry(_embed)
+    if not query_embedding:
+        return {
+            "answer": "Error: Failed to generate query embedding.",
+            "metrics": metrics.to_dict(),
+            "chunks_retrieved": 0,
+            "similarity_scores": [],
+        }
     
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)
@@ -117,7 +130,7 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
         else:
             answer = "Error: LLM service returned an invalid response."
     except Exception as e:
-        answer = f"Error generating response: {str(e)}"
+        answer = sanitize_error(f"Error generating response: {str(e)}")
     
     metrics.record(prompt, answer, start)
     return {
@@ -133,13 +146,25 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
     Run Basic RAG pipeline and yield SSE events.
     """
     metrics = PipelineMetrics("Basic-RAG")
-    yield {"type": "status", "message": "Retrieving context (Local Embedding)..."}
+    yield {"type": "status", "message": "Retrieving context (Gemini Embedding)..."}
 
-    index, client, embed_model = _get_clients()
+    index, client = _get_clients()
 
     # Step 1: Embed query
     start = time.time()
-    query_embedding = embed_model.encode(query).tolist()
+    def _embed():
+        return genai.embed_content(
+            model=_embed_model_id,
+            content=query,
+            task_type="retrieval_query"
+        )["embedding"]
+    
+    query_embedding = with_retry(_embed)
+    if not query_embedding:
+        answer = "Error: Failed to generate query embedding."
+        yield {"type": "chunk", "text": answer, "tokens": 0}
+        yield {"type": "done", "metrics": metrics.to_dict(), "answer": answer}
+        return
 
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)
@@ -211,13 +236,11 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
                         except Exception:
                             continue
     except Exception as e:
-        answer = f"Error generating response: {str(e)}"
+        answer = sanitize_error(f"Error generating response: {str(e)}")
         yield {"type": "chunk", "text": answer, "tokens": 0}
 
     metrics.prompt_tokens = prompt_tokens
     metrics.record(prompt, answer, start)
-    metrics.total_tokens = metrics.prompt_tokens + metrics.completion_tokens
-    metrics.cost_usd = metrics.total_tokens / 1_000_000 * 0.075
 
     yield {
         "type": "done",
