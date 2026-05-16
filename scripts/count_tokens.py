@@ -48,7 +48,7 @@ def count_tokens(path: str, model_id: str = "models/gemini-2.5-flash"):
         print(f"  Path          : {path}")
         print(f"  Total tokens  : {total_tokens:,}")
         
-        # Estimate cost (approximate for Gemini text-embedding-004)
+        # Estimate cost (approximate; for display only)
         embed_cost = total_tokens / 1000 * 0.0001
         print(f"  Est. embed cost: ${embed_cost:.4f}")
         print(f"{'='*50}")

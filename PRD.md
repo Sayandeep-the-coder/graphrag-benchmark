@@ -1,187 +1,133 @@
 # Product Requirements Document
-## GraphRAG Inference Benchmark — TigerGraph Hackathon
+## Medical GraphRAG Inference Benchmark
 
-**Version:** 1.0.0
-**Author:** Sayandeep
-**Status:** Active
-**Last Updated:** 2025
+**Version:** 1.1.0  
+**Status:** Active  
+**Last updated:** 2026
 
 ---
 
 ## 1. Overview
 
-### 1.1 Problem Statement
+### 1.1 Problem statement
 
-LLMs burn thousands of tokens answering complex questions. At scale, this gets expensive. Basic RAG (vector search + LLM) partially solves retrieval but treats documents as isolated chunks — it cannot reason across entity relationships.
+LLMs consume large prompts when answering domain questions. Basic RAG retrieves similar text chunks but misses relational structure (e.g. disease → symptoms → precautions). GraphRAG uses a knowledge graph for multi-hop retrieval and tighter context.
 
-**GraphRAG solves this.** By organizing data into a knowledge graph, it performs multi-hop reasoning and delivers precise, focused context to the LLM — fewer tokens, faster responses, lower cost, without sacrificing accuracy.
+### 1.2 Project goal
 
-### 1.2 Project Goal
+> **GraphRAG reduces token consumption by 40–70% vs Basic RAG while maintaining or improving answer accuracy** on a medical Q&A benchmark.
 
-Build a three-pipeline benchmark system that proves:
+### 1.3 Context
 
-> **GraphRAG reduces token consumption by 40–70% vs Basic RAG while maintaining or improving answer accuracy.**
-
-### 1.3 Hackathon Context
-
-- **Event:** GraphRAG Inference Hackathon by TigerGraph
-- **Round 1:** 2M+ token dataset, open to all
-- **Round 2:** 50–100M tokens, top 10 teams only
-- **Prize Pool:** $700 + TigerGraph engineering mentorship
+Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally targeted a 2M+ token Wikipedia corpus; the **current default dataset is medical** (`data/medical/knowledge_base.txt`). Wikipedia tooling remains optional under `scripts/extract_wikipedia.py`.
 
 ---
 
 ## 2. Scope
 
-### 2.1 In Scope
+### 2.1 In scope
 
-- Three inference pipelines (LLM-Only, Basic RAG, GraphRAG)
-- Pinecone-backed vector store for Pipeline 2
-- TigerGraph knowledge graph for Pipeline 3
-- Interactive comparison dashboard (single query → 3 answers + metrics)
-- Token, latency, cost, and accuracy benchmarking
-- LLM-as-a-Judge + BERTScore accuracy evaluation
-- Wikipedia dataset ingestion (2M+ tokens)
-- Public GitHub repo, demo video, blog post
+- Three pipelines: LLM-only, Basic RAG (Pinecone), GraphRAG (TigerGraph service)
+- Medical dataset preparation and dual ingest (Pinecone + GraphRAG)
+- Comparison dashboard with streaming responses (`/compare/stream`)
+- Per-pipeline tokens, latency, cost; token reduction vs Basic RAG
+- Optional ground-truth accuracy: LLM-as-judge + BERTScore
+- Batch benchmark reports in `results/`
+- Docker Compose deployment
 
-### 2.2 Out of Scope
+### 2.2 Out of scope
 
 - Model fine-tuning
-- Real-time streaming responses (v2 feature)
-- Multi-language support
-- User authentication / multi-tenant system
+- Multi-tenant auth
+- Non-English locales (v1)
 
 ---
 
-## 3. Users
+## 3. Functional requirements
 
-| User | Goal |
-|------|------|
-| Hackathon Judges | Evaluate token reduction + accuracy improvement |
-| Developers | Understand GraphRAG architecture and replicate |
-| AI Teams | Adopt GraphRAG pattern in production |
-| Open Source Community | Contribute and extend the benchmark |
-
----
-
-## 4. Functional Requirements
-
-### 4.1 Pipeline 1 — LLM Only
+### 4.1 Pipeline 1 — LLM only
 
 | ID | Requirement |
 |----|-------------|
 | P1-01 | Accept natural language query |
-| P1-02 | Send query directly to Gemini 1.5 Flash with no retrieval context |
-| P1-03 | Return answer, prompt tokens, completion tokens, latency, cost |
-| P1-04 | Serve as worst-case token baseline |
+| P1-02 | Call `models/gemini-2.5-flash` via GenAI REST with **no** retrieval context |
+| P1-03 | Return answer, token metrics, latency, cost |
+| P1-04 | Baseline for minimum prompt size / ungrounded answers |
 
-### 4.2 Pipeline 2 — Basic RAG (Pinecone)
-
-| ID | Requirement |
-|----|-------------|
-| P2-01 | Chunk dataset using RecursiveCharacterTextSplitter (chunk_size=512, overlap=64) |
-| P2-02 | Embed chunks using `gemini-embedding-001` (3072 dimensions) |
-| P2-03 | Store embeddings in Pinecone serverless index |
-| P2-04 | At query time, retrieve top-k=5 semantically similar chunks |
-| P2-05 | Inject retrieved chunks as context into Gemini prompt |
-| P2-06 | Return answer + full token/latency/cost metrics |
-
-### 4.3 Pipeline 3 — GraphRAG (TigerGraph)
+### 4.2 Pipeline 2 — Basic RAG
 
 | ID | Requirement |
 |----|-------------|
-| P3-01 | Ingest dataset into TigerGraph GraphRAG service via REST API |
-| P3-02 | GraphRAG service auto-extracts entities and relationships |
-| P3-03 | At query time, perform multi-hop graph traversal (default hop_depth=2) |
-| P3-04 | Support retriever modes: `hybrid`, `community`, `sibling` |
-| P3-05 | Return graph-grounded answer + token/latency/cost metrics |
-| P3-06 | Expose tunable parameters: hop_depth, chunk_size, retriever type |
+| P2-01 | Chunk medical KB (`CHUNK_SIZE=1000`, `OVERLAP=100`) |
+| P2-02 | Embed with `models/embedding-001` |
+| P2-03 | Store in Pinecone (namespace `medical-rag`) |
+| P2-04 | Dynamic top-K retrieval (score threshold + cliff detection) |
+| P2-05 | Generate with `models/gemma-4-26b-a4b-it` (REST) using retrieved chunks only |
+| P2-06 | Return answer + chunk count + similarity scores + metrics |
 
-### 4.4 Comparison Dashboard
-
-| ID | Requirement |
-|----|-------------|
-| D-01 | Single query input field triggers all 3 pipelines simultaneously |
-| D-02 | Display answers side-by-side for all 3 pipelines |
-| D-03 | Show per-pipeline: prompt tokens, completion tokens, total tokens, latency, cost |
-| D-04 | Show token reduction % (GraphRAG vs Basic RAG) prominently |
-| D-05 | Optional ground truth input for accuracy evaluation |
-| D-06 | Display LLM-Judge verdict (PASS/FAIL) and BERTScore F1 per pipeline |
-| D-07 | Exportable benchmark report (JSON/CSV) |
-
-### 4.5 Accuracy Evaluation
+### 4.3 Pipeline 3 — GraphRAG
 
 | ID | Requirement |
 |----|-------------|
-| A-01 | LLM-as-a-Judge: hosted HuggingFace model grades PASS/FAIL |
-| A-02 | BERTScore: semantic similarity F1 against ground truth |
-| A-03 | Target: ≥90% LLM-Judge pass rate (bonus threshold) |
-| A-04 | Target: BERTScore F1 rescaled ≥ 0.55 (bonus threshold) |
-| A-05 | Accuracy must be maintained vs Basic RAG — token reduction alone is not a win |
+| P3-01 | Ingest via GraphRAG `POST /documents/batch` |
+| P3-02 | Service builds entities/relationships in TigerGraph |
+| P3-03 | Query with configurable `hop_depth` (default 2) |
+| P3-04 | Retrievers: `hybrid`, `community`, `sibling` |
+| P3-05 | Return answer + entities + metrics; fail gracefully if service down |
+
+### 4.4 Dashboard
+
+| ID | Requirement |
+|----|-------------|
+| D-01 | Single query runs all three pipelines |
+| D-02 | Side-by-side answers and metrics |
+| D-03 | Token reduction % (GraphRAG vs Basic RAG) |
+| D-04 | SSE streaming for live output |
+| D-05 | Optional ground truth → accuracy badges |
+| D-06 | Display knowledge base snippet |
+
+### 4.5 Accuracy evaluation
+
+| ID | Requirement |
+|----|-------------|
+| A-01 | LLM-as-judge (Gemma-based in `llm_judge.py`) |
+| A-02 | BERTScore semantic F1 |
+| A-03 | Targets: ≥90% judge pass rate; BERTScore F1 rescaled ≥ 0.55 (bonus thresholds) |
 
 ---
 
-## 5. Non-Functional Requirements
-
-| Category | Requirement |
-|----------|-------------|
-| Performance | Dashboard query response < 30s for all 3 pipelines |
-| Scalability | Pinecone serverless auto-scales; TigerGraph Savanna handles 2M–100M tokens |
-| Cost | Round 1 target: free tier only (Gemini free, Pinecone free, TigerGraph Savanna credits) |
-| Reliability | Retry logic on LLM API calls (exponential backoff, max 3 retries) |
-| Observability | All metrics logged to JSON per query run |
-| Reproducibility | Full dataset + config committed to GitHub |
-
----
-
-## 6. Tech Stack
+## 4. Tech stack (current)
 
 | Layer | Technology |
-|-------|-----------|
-| LLM | Google Gemini 1.5 Flash |
-| Vector DB | Pinecone Serverless (free tier) |
-| Graph DB | TigerGraph Savanna / Community Edition |
-| GraphRAG Service | github.com/tigergraph/graphrag (Docker) |
-| Embeddings | gemini-embedding-001 (3072 dimensions) |
+|-------|------------|
+| LLM — P1 | `models/gemini-2.5-flash` |
+| LLM — P2 | `models/gemma-4-26b-a4b-it` |
+| Embeddings — P2 | `models/embedding-001` |
+| Vector DB | Pinecone Serverless |
+| Graph | TigerGraph Savanna + `tigergraph/graphrag` Docker |
 | Backend | FastAPI (Python 3.11+) |
-| Frontend | React + Tailwind CSS |
-| Accuracy Eval | BERTScore + HuggingFace Inference API |
-| Dataset | Wikipedia (Kaggle) — 2M+ tokens |
-| Deployment | Docker Compose (local) |
+| Frontend | React + Tailwind + Recharts |
+| Eval | BERTScore + LLM judge |
+| Dataset (default) | Medical KB (`prepare_medical_data.py`) |
 
 ---
 
-## 7. Success Metrics
+## 5. Success metrics
 
 | Metric | Target |
 |--------|--------|
-| Token reduction (GraphRAG vs Basic RAG) | ≥ 40% |
-| LLM-Judge pass rate | ≥ 90% (bonus) |
+| Token reduction (P3 vs P2) | ≥ 40% |
+| LLM-judge pass rate | ≥ 90% (bonus) |
 | BERTScore F1 rescaled | ≥ 0.55 (bonus) |
-| Dashboard query latency | < 30s end-to-end |
-| Dataset size | ≥ 2M tokens (Round 1) |
-| GitHub stars | Community validation |
+| End-to-end dashboard latency | < 30s typical |
 
 ---
 
-## 8. Deliverables
-
-- [ ] Public GitHub repo (built on TigerGraph GraphRAG repo)
-- [ ] Architecture diagram
-- [ ] Working comparison dashboard
-- [ ] Benchmark report (tokens, cost, latency, accuracy per pipeline)
-- [ ] Demo video (5–7 min)
-- [ ] Blog post (Medium / Hashnode / Dev.to)
-- [ ] Social media post (#GraphRAGInferenceHackathon)
-
----
-
-## 9. Risks
+## 6. Risks
 
 | Risk | Mitigation |
-|------|-----------|
-| Pinecone free tier limits | Use serverless — scales automatically, generous free tier |
-| TigerGraph ingestion slow on 2M tokens | Batch ingest, run overnight |
-| Gemini rate limits | Exponential backoff with `withRetry()` |
-| GraphRAG accuracy low | Tune hop_depth, chunk_size, retriever type iteratively |
-| BERTScore below threshold | Use better ground truth answers, tune prompt templates |
+|------|------------|
+| Gemma / Gemini rate limits | `with_retry` exponential backoff |
+| Pinecone dimension mismatch | Index at 768 for `embedding-001` |
+| GraphRAG unavailable | Sanitized errors in P3; compose health checks |
+| Medical hallucination on P1 | Use P2/P3 for grounded answers; judge in eval |

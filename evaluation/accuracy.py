@@ -6,7 +6,11 @@ results into a unified report with bonus achievement tracking.
 """
 
 from evaluation.llm_judge import batch_judge
-from evaluation.bertscore_eval import compute_bertscore
+try:
+    from evaluation.bertscore_eval import compute_bertscore
+    BERTSCORE_AVAILABLE = True
+except ImportError:
+    BERTSCORE_AVAILABLE = False
 
 
 def evaluate_pipeline(
@@ -29,12 +33,16 @@ def evaluate_pipeline(
         and max_bonus_achieved flag (True if both bonuses hit).
     """
     judge_results = batch_judge(questions, answers, ground_truths)
-    bert_results = compute_bertscore(answers, ground_truths)
-
-    both_bonus = (
-        judge_results["bonus_achieved"]
-        and (bert_results["bonus_achieved_raw"] or bert_results["bonus_achieved_rescaled"])
-    )
+    
+    if BERTSCORE_AVAILABLE:
+        bert_results = compute_bertscore(answers, ground_truths)
+        both_bonus = (
+            judge_results["bonus_achieved"]
+            and (bert_results["bonus_achieved_raw"] or bert_results["bonus_achieved_rescaled"])
+        )
+    else:
+        bert_results = {"f1": 0, "precision": 0, "recall": 0, "f1_rescaled": 0, "bonus_achieved_raw": False, "bonus_achieved_rescaled": False, "message": "BERTScore disabled (Lite Build)"}
+        both_bonus = False
 
     return {
         "pipeline": pipeline_name,

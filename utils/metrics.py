@@ -34,7 +34,7 @@ class PipelineMetrics:
         self.completion_tokens = len(enc.encode(response))
         self.latency_ms = (time.time() - start_time) * 1000
         total = self.prompt_tokens + self.completion_tokens
-        self.cost_usd = total / 1_000_000 * 0.075  # Gemini 1.5 Flash pricing
+        self.cost_usd = total / 1_000_000 * 0.075  # approximate blended rate for comparison
 
     def to_dict(self) -> dict:
         """Return metrics as a dictionary with standardized keys."""

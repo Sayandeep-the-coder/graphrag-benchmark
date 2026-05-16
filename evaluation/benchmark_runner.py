@@ -1,7 +1,7 @@
 """
 Benchmark Runner — Batch evaluation across all 3 pipelines.
 
-Runs 30 Wikipedia-domain queries through LLM-Only, Basic RAG, and GraphRAG,
+Runs 30 medical-domain queries through LLM-Only, Basic RAG, and GraphRAG,
 measures token reduction, evaluates accuracy, and saves a JSON report.
 """
 
@@ -16,8 +16,8 @@ from pipelines.pipeline3_graphrag import query as p3
 from evaluation.accuracy import evaluate_all_pipelines
 
 # ──────────────────────────────────────────────────────────────
-# 30 Wikipedia-domain benchmark queries with ground truths
-# Mix of factual, relational, and multi-entity questions
+# 30 medical-domain benchmark queries with ground truths
+# Symptoms, precautions, and disease definitions from the medical KB
 # ──────────────────────────────────────────────────────────────
 
 BENCHMARK_QUERIES = [

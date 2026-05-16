@@ -66,6 +66,7 @@ Thumbs.db
 
 # GraphRAG specific
 graphrag/
+configs/server_config.json
 
 # Project Specific
 scratch/
@@ -73,3 +74,12 @@ results/*
 !results/.gitkeep
 backend_log.txt
 *.log
+
+# GSD (get-shit-done) — local install & planning artifacts, never commit
+.planning/
+.cursor/
+gsd-local-patches/
+get-shit-done/
+
+# Pinecone
+*[Pp][Ii][Nn][Ee][Cc][Oo][Nn][Ee]*.md

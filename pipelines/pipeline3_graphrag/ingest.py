@@ -1,76 +1,45 @@
 """
 Pipeline 3 — GraphRAG Ingest
 
-Pushes Wikipedia .txt files to the TigerGraph GraphRAG service
-in batches of 10 via REST API. The service auto-extracts entities
-and relationships to build the knowledge graph.
+Loads .txt documents into TigerGraph Savanna via pyTigerGraph (inline JSONL load),
+then rebuilds the GraphRAG knowledge graph through the local GraphRAG service.
 """
 
-import glob
-import os
+import argparse
+import sys
+from pathlib import Path
 
-import requests
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from dotenv import load_dotenv
-from tqdm import tqdm
+
+from utils.tigergraph_ingest import ingest_to_savanna
 
 load_dotenv()
 
-GRAPHRAG_URL = os.getenv("GRAPHRAG_SERVICE_URL", "http://localhost:8000")
-BATCH_SIZE = 10
 
-
-def ingest_documents(docs_folder: str = "./data/wikipedia"):
-    """
-    Ingest all .txt files into TigerGraph GraphRAG service.
-
-    Sends documents in batches of 10 via POST /documents/batch.
-    The service handles entity extraction and relationship mapping automatically.
-    """
-    filepaths = glob.glob(f"{docs_folder}/**/*.txt", recursive=True)
-    print(f"Ingesting {len(filepaths)} documents into TigerGraph GraphRAG from {docs_folder}...")
-
-    succeeded = 0
-    failed = 0
-
-    for i in tqdm(range(0, len(filepaths), BATCH_SIZE), desc="Batching documents"):
-        batch = filepaths[i : i + BATCH_SIZE]
-        batch_docs = []
-
-        for filepath in batch:
-            with open(filepath, encoding="utf-8") as f:
-                text = f.read()
-            batch_docs.append({
-                "content": text,
-                "filename": os.path.basename(filepath),
-                "source": "medical_csv" if "medical" in docs_folder else "wikipedia",
-            })
-
-        try:
-            resp = requests.post(
-                f"{GRAPHRAG_URL}/documents/batch",
-                json={"documents": batch_docs},
-                timeout=120,
-            )
-
-            if resp.status_code == 200:
-                succeeded += len(batch)
-            else:
-                print(f"\n[FAILED] Batch {i // BATCH_SIZE} failed (HTTP {resp.status_code}): {resp.text[:200]}")
-                failed += len(batch)
-        except requests.exceptions.RequestException as e:
-            print(f"\n[ERROR] Batch {i // BATCH_SIZE} error: {e}")
-            failed += len(batch)
-
-    print(f"\n[SUCCESS] TigerGraph GraphRAG ingest complete.")
-    print(f"   Total files attempted: {len(filepaths)}")
-    print(f"   Succeeded            : {succeeded}")
-    print(f"   Failed               : {failed}")
+def ingest_documents(docs_folder: str = "./data/medical", rebuild: bool = True):
+    """Ingest documents and rebuild the GraphRAG graph."""
+    print(f"Ingesting from {docs_folder} into TigerGraph Savanna...")
+    result = ingest_to_savanna(docs_folder, rebuild=rebuild)
+    print(f"  JSONL         : {result['jsonl_path']}")
+    print(f"  Documents     : {result['document_count']}")
+    print(f"  Content nodes : {result['content_count']}")
+    print(f"  Doc chunks    : {result.get('document_chunk_count', '?')}")
+    print(f"  Entities      : {result.get('entity_count', '?')}")
+    if result.get("rebuild_error"):
+        print(f"  [WARN] Rebuild: {result['rebuild_error']}")
+    print("\n[SUCCESS] Savanna load complete.")
+    if result.get("document_chunk_count", 0) == 0:
+        print(
+            "  Chunks not built yet - open http://localhost:8000/ui GraphRAG admin "
+            "and Rebuild graph, or re-run ingest without --no-rebuild."
+        )
 
 
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser(description="Ingest documents into TigerGraph GraphRAG.")
-    parser.add_argument("--path", type=str, default="./data/wikipedia", help="Path to folder to ingest.")
-    
+    parser.add_argument("--path", type=str, default="./data/medical")
+    parser.add_argument("--no-rebuild", action="store_true", help="Skip knowledge-graph rebuild")
     args = parser.parse_args()
-    ingest_documents(args.path)
+    ingest_documents(args.path, rebuild=not args.no_rebuild)

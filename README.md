@@ -1,121 +1,124 @@
 # Medical GraphRAG Inference Benchmark
 
-A three-pipeline LLM inference benchmark that evaluates and proves how GraphRAG (TigerGraph) reduces token consumption and improves context relevance compared to Basic RAG (Pinecone) on a custom **Medical Dataset**.
+A three-pipeline LLM inference benchmark that evaluates how GraphRAG (TigerGraph) reduces token consumption and improves context relevance compared to Basic RAG (Pinecone) on a custom **medical dataset**.
 
-This system allows for side-by-side performance comparison (latency, token usage, cost, and qualitative response) of three distinct approaches.
+The dashboard runs all three pipelines on the same query and compares latency, token usage, cost, and answer quality side by side.
 
 ## The Pipelines
 
-| # | Pipeline | Method | Retrieval Logic | Expected Token Usage |
-|---|----------|--------|-----------------|----------------------|
-| **1** | **LLM-Only** | Direct Google GenAI call (`gemma-4`) | No context provided. Used as a baseline for hallucination risk. | Very Low |
-| **2** | **Basic RAG** | Pinecone Vector Search + `gemma-4` | Uses Gemini `gemini-embedding-001` (3072 dimensions). Implements **Dynamic Top-K Hopping** to fetch chunks and filter based on a score cliff. | High |
-| **3** | **GraphRAG** | TigerGraph Multi-Hop Graph + `gemma-4` | REST API graph traversal fetching multi-hop relational entities (hybrid/community/sibling modes). | Medium |
+| # | Pipeline | Generation model | Retrieval | Expected token profile |
+|---|----------|------------------|-----------|----------------------|
+| **1** | **LLM-Only** | `models/gemini-2.5-flash` | None (baseline; hallucination risk) | Lowest prompt tokens |
+| **2** | **Basic RAG** | `models/gemma-4-26b-a4b-it` | Pinecone + `models/embedding-001` | Highest (retrieved chunks in prompt) |
+| **3** | **GraphRAG** | TigerGraph GraphRAG service (Docker) | Multi-hop graph (`hybrid` / `community` / `sibling`) | Medium (graph-selected context) |
+
+Pipeline 2 uses **dynamic top-K**: it fetches up to 15 vector matches, then keeps chunks while similarity stays above `0.5` and scores do not drop more than `0.05` between consecutive hits (capped at `top_k`, default 3).
 
 > [!NOTE]
-> Due to experimental backend instability with the `gemma-4-26b-a4b-it` SDK model on medical queries, pipelines 1 and 2 directly use the Google GenAI REST API to properly parse response structures and prevent 500 Internal Server errors.
+> Pipelines 1 and 2 call the Google GenAI **REST API** (not the SDK `generate_content` path) for stable parsing with Gemma/Gemini on medical queries. Pipeline 3 delegates generation to the TigerGraph GraphRAG container.
 
 ## Tech Stack
 
-- **LLM Models**: `gemma-4-26b-a4b-it` (Generation), `gemini-embedding-001` (Vector Embeddings)
-- **Vector DB**: Pinecone Serverless
-- **Graph DB**: TigerGraph Savanna
-- **Backend**: FastAPI + Uvicorn + Python 3
-- **Frontend**: React 18 + Tailwind CSS + Recharts
+| Layer | Technology |
+|-------|------------|
+| LLM (P1) | `models/gemini-2.5-flash` |
+| LLM (P2) | `models/gemma-4-26b-a4b-it` |
+| Embeddings (P2) | `models/embedding-001` (Google GenAI) |
+| Vector DB | Pinecone Serverless, namespace `medical-rag` |
+| Graph DB | TigerGraph Savanna + `tigergraph/graphrag` Docker image |
+| Backend | FastAPI + Uvicorn |
+| Frontend | React 18 + Tailwind CSS + Recharts |
 
 ---
 
-## 🚀 Setup Instructions for Contributors
+## Setup
 
-### 1. Environment Variables
-Copy the example environment file and fill in your API keys.
+### 1. Environment variables
+
 ```bash
 cp .env.example .env
 ```
-Ensure you have the following configured:
+
+Required:
+
 - `GEMINI_API_KEY`
 - `PINECONE_API_KEY`
-- `PINECONE_INDEX_NAME` (e.g., `medical-rag`)
-- `TG_HOST` & `TG_PASSWORD` (if running GraphRAG)
+- `PINECONE_INDEX_NAME` (e.g. `graphrag-benchmark`)
+- `TG_HOST`, `TG_PASSWORD` (for GraphRAG / TigerGraph)
+- `GRAPHRAG_SERVICE_URL` (default `http://localhost:8000`)
 
-### 2. Python Backend Setup
-Initialize the virtual environment and install dependencies.
+Create a Pinecone index whose **dimension matches** `models/embedding-001` output (768). See `scripts/create_pinecone_index.py`.
+
+### 2. Python
+
 ```bash
 python -m venv venv
-
-# Windows
-.\venv\Scripts\activate
-# Mac/Linux
-source venv/bin/activate
-
+# Windows: .\venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Data Preparation
-We use a custom medical dataset consisting of symptoms, precautions, and severity mappings. Convert the raw CSV files into a unified knowledge base:
+### 3. Medical data
+
 ```bash
 python scripts/prepare_medical_data.py
 ```
-This generates the unified `data/medical/knowledge_base.txt`.
 
-### 4. Database Ingestion
-Ingest the knowledge base into the Vector DB (Pinecone) and Graph DB (TigerGraph):
+Produces `data/medical/knowledge_base.txt`.
+
+### 4. Ingest
+
 ```bash
-# Ingest into Pinecone for Basic RAG
-python pipelines/pipeline2_basic_rag/ingest.py
-
-# Ingest into TigerGraph for GraphRAG
-python pipelines/pipeline3_graphrag/ingest.py
+python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace medical-rag
+python pipelines/pipeline3_graphrag/ingest.py --path ./data/medical
 ```
 
-*(Optional) Verify your token counts:*
+Optional token check:
+
 ```bash
 python scripts/count_tokens.py --path data/medical/knowledge_base.txt
 ```
 
-### 5. Running the Dashboard Services
+### 5. Dashboard
 
-**Start the Backend (FastAPI)**
-The backend coordinates the LLM inference and metrics collection.
 ```bash
-# From the project root
 uvicorn dashboard.backend.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-**Start the Frontend (React)**
-The frontend provides the visual benchmark comparison UI.
 ```bash
-cd dashboard/frontend
-npm install
-npm run dev
+cd dashboard/frontend && npm install && npm run dev
 ```
 
-Finally, open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**.
+Open [http://localhost:3000](http://localhost:3000).
+
+Or run the full stack: `docker compose up`.
 
 ---
 
-## 📁 Project Structure
+## Project structure
 
 ```text
 graphrag-benchmark/
-├── data/
-│   └── medical/               # Raw medical CSVs and parsed knowledge_base.txt
+├── data/medical/                 # CSVs + knowledge_base.txt
 ├── pipelines/
-│   ├── pipeline1_llm_only.py  # Baseline inference
-│   ├── pipeline2_basic_rag/   # Pinecone vector search & dynamic hopping logic
-│   └── pipeline3_graphrag/    # TigerGraph REST integration
-├── dashboard/
-│   ├── backend/               # FastAPI orchestration (main.py)
-│   └── frontend/              # Next.js/React benchmark UI
-├── scripts/
-│   ├── prepare_medical_data.py# CSV-to-text unified preparation
-│   ├── count_tokens.py        # Token baseline verification
-│   └── smoke_test.py          # Terminal validation script
-├── utils/                     # Metrics tracking & retry logic
-└── requirements.txt
+│   ├── pipeline1_llm_only.py
+│   ├── pipeline2_basic_rag/      # Pinecone ingest + dynamic top-K query
+│   └── pipeline3_graphrag/       # GraphRAG REST ingest + query
+├── dashboard/backend/            # FastAPI (/compare, /compare/stream, ingest)
+├── dashboard/frontend/           # React benchmark UI
+├── evaluation/                   # accuracy + batch benchmark_runner
+├── scripts/                      # data prep, Pinecone helpers, smoke_test
+└── utils/                        # metrics, retry, security
 ```
 
-## Contributing Guidelines
-1. **Dynamic Top-K Search**: If editing the vector search algorithms in `pipeline2_basic_rag/query.py`, ensure that the *score cliff* detection logic (`min_score_threshold` and `score_drop_threshold`) remains intact, as this significantly optimizes token consumption.
-2. **Graceful Degradation**: The GraphRAG pipeline handles REST connection failures gracefully. If the TigerGraph Docker container isn't running, it should return a clean error string to the frontend instead of crashing the backend. Keep this pattern for all new microservices.
-3. **Dependencies**: When introducing new packages, ensure you add them to `requirements.txt` to avoid `Cannot find module` errors across environments.
+## Contributing
+
+1. **Dynamic top-K** (`pipeline2_basic_rag/query.py`): keep `min_score_threshold` and `score_drop_threshold` when changing retrieval.
+2. **Graceful degradation** (`pipeline3_graphrag/query.py`): return user-safe errors if GraphRAG is down; do not crash the API.
+3. **Dependencies**: add new packages to `requirements.txt`.
+
+See [SETUP.md](SETUP.md), [TIGERGRAPH_CLOUD_SETUP.md](TIGERGRAPH_CLOUD_SETUP.md) (Savanna connection), [ARCHITECTURE.md](ARCHITECTURE.md), [PIPELINES.md](PIPELINES.md), and [EVALUATION.md](EVALUATION.md) for detail.
+
+### Optional: Wikipedia dataset (legacy)
+
+Scripts under `scripts/extract_wikipedia.py` and `data/wikipedia/` support the original hackathon Wikipedia benchmark. The default dashboard and ingest paths use **medical** data.

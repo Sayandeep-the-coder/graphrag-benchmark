@@ -7,8 +7,13 @@ Format: [Semantic Versioning](https://semver.org)
 
 ## [Unreleased]
 
-- Round 2 scale-up to 50M tokens
-- Streaming dashboard responses
+### Changed
+- Aligned documentation with medical dataset and current models (see README, ARCHITECTURE, PIPELINES, SETUP, PRD, EVALUATION)
+- Pinecone index helper scripts default to dimension **768** for `models/embedding-001`
+- GraphRAG ingest default path: `./data/medical`
+
+### Planned
+- Round 2 scale-up to larger corpora
 - Query history persistence
 
 ---

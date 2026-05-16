@@ -148,98 +148,25 @@ def evaluate_all_pipelines(
 
 ---
 
-## Benchmark Runner
+## Benchmark runner
 
-Run 30+ queries across all pipelines, save results:
+**File:** `evaluation/benchmark_runner.py`
 
-```python
-# evaluation/benchmark_runner.py
-import json, time
-from datetime import datetime
-from pipelines import pipeline1_llm_only as p1
-from pipelines.pipeline2_basic_rag import query as p2
-from pipelines.pipeline3_graphrag import query as p3
-from evaluation.accuracy import evaluate_all_pipelines
+Runs **30 medical-domain** question/answer pairs through all three pipelines, computes per-query token reduction (P2 vs P3), runs `evaluate_all_pipelines`, and writes JSON to `results/benchmark_YYYYMMDD_HHMMSS.json`.
 
-# Sample benchmark queries + ground truths for Wikipedia dataset
-BENCHMARK_QUERIES = [
-    {
-        "query": "Who developed the theory of general relativity?",
-        "ground_truth": "Albert Einstein developed the theory of general relativity, published in 1915."
-    },
-    {
-        "query": "What is the capital of France and what river runs through it?",
-        "ground_truth": "Paris is the capital of France. The Seine river runs through it."
-    },
-    {
-        "query": "What programming language was developed by Guido van Rossum?",
-        "ground_truth": "Python programming language was developed by Guido van Rossum, first released in 1991."
-    },
-    # Add 30+ more queries for robust benchmark
-]
-
-def run_benchmark():
-    p1_answers, p2_answers, p3_answers, ground_truths = [], [], [], []
-    all_metrics = []
-
-    for item in BENCHMARK_QUERIES:
-        query = item["query"]
-        gt = item["ground_truth"]
-        ground_truths.append(gt)
-
-        r1 = p1.run(query)
-        r2 = p2.run(query)
-        r3 = p3.run(query)
-
-        p1_answers.append(r1["answer"])
-        p2_answers.append(r2["answer"])
-        p3_answers.append(r3["answer"])
-
-        # Token reduction per query
-        rag_tokens = r2["metrics"]["total_tokens"]
-        graph_tokens = r3["metrics"]["total_tokens"]
-        reduction = (rag_tokens - graph_tokens) / rag_tokens * 100
-
-        all_metrics.append({
-            "query": query,
-            "p1": r1["metrics"],
-            "p2": r2["metrics"],
-            "p3": r3["metrics"],
-            "token_reduction_pct": round(reduction, 2)
-        })
-
-        print(f"✅ Query done | Reduction: {reduction:.1f}%")
-        time.sleep(1)  # rate limit safety
-
-    accuracy = evaluate_all_pipelines(p1_answers, p2_answers, p3_answers, ground_truths)
-
-    report = {
-        "generated_at": datetime.now().isoformat(),
-        "total_queries": len(BENCHMARK_QUERIES),
-        "per_query_metrics": all_metrics,
-        "accuracy": accuracy,
-        "summary": {
-            "avg_token_reduction_pct": sum(
-                m["token_reduction_pct"] for m in all_metrics
-            ) / len(all_metrics),
-            "graphrag_judge_pass_rate": accuracy["GraphRAG"]["llm_judge"]["pass_rate"],
-            "graphrag_bertscore_f1": accuracy["GraphRAG"]["bertscore"]["f1_rescaled"],
-            "max_bonus": accuracy["GraphRAG"]["max_bonus_achieved"]
-        }
-    }
-
-    with open(f"./results/benchmark_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", "w") as f:
-        json.dump(report, f, indent=2)
-
-    print("\n=== BENCHMARK COMPLETE ===")
-    print(f"Avg token reduction: {report['summary']['avg_token_reduction_pct']:.1f}%")
-    print(f"Judge pass rate:     {report['summary']['graphrag_judge_pass_rate']*100:.1f}%")
-    print(f"BERTScore F1:        {report['summary']['graphrag_bertscore_f1']:.3f}")
-    print(f"Max bonus achieved:  {report['summary']['max_bonus']}")
-
-if __name__ == "__main__":
-    run_benchmark()
+```bash
+python -m evaluation.benchmark_runner
+# or
+python evaluation/benchmark_runner.py
 ```
+
+Each entry in `BENCHMARK_QUERIES` uses `question` and `correct_answer` (symptoms, precautions, disease definitions from the medical KB). P2 is called with `namespace="medical-rag"` and `top_k=3` to match the dashboard defaults.
+
+Summary fields in the report:
+
+- `avg_token_reduction_pct`
+- `graphrag_judge_pass_rate` / `graphrag_bertscore_f1`
+- `max_bonus` (both judge + BERTScore thresholds met)
 
 ---
 

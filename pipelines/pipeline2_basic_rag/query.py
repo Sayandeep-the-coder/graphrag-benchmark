@@ -1,8 +1,8 @@
 """
 Pipeline 2 — Basic RAG Query
 
-Uses Sentence-Transformers for embeddings (Gemma-compatible)
-to search Pinecone, build a context prompt, and call Gemma.
+Embeds queries with Pinecone Inference, retrieves from Pinecone with dynamic top-K,
+then generates with models/gemma-4-26b-a4b-it via the GenAI REST API.
 """
 
 import os
@@ -10,11 +10,9 @@ import time
 import httpx
 import json
 import asyncio
-import google.generativeai as genai
 from dotenv import load_dotenv
-from pinecone import Pinecone
-# Removed SentenceTransformer
 
+from utils.embeddings import get_pinecone_client, embed_texts
 from utils.metrics import PipelineMetrics
 from utils.retry import with_retry
 from utils.security import sanitize_error
@@ -24,7 +22,6 @@ load_dotenv()
 # --- Lazy-initialized clients ---
 _pc = None
 _index = None
-_client = None
 _model_id = "models/gemma-4-26b-a4b-it"
 _embed_model_id = "models/gemini-embedding-001"
 
@@ -32,15 +29,12 @@ TOP_K = 3  # Number of chunks to retrieve (optimized for medical data)
 
 
 def _get_clients():
-    """Lazily initialize external clients on first call."""
-    global _pc, _index, _client
+    """Lazily initialize Pinecone client and index on first call."""
+    global _pc, _index
     if _pc is None or _index is None:
-        _pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+        _pc = get_pinecone_client()
         _index = _pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
-    if _client is None:
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        _client = genai
-    return _index, _client
+    return _index, _pc
 
 
 def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
@@ -48,25 +42,10 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     Run a query through the Basic RAG pipeline.
     """
     metrics = PipelineMetrics("Basic-RAG")
-    index, client = _get_clients()
+    index, pc = _get_clients()
 
-    # Step 1: Embed query (Gemini embedding)
-    start_embed = time.time()
-    def _embed():
-        return genai.embed_content(
-            model=_embed_model_id,
-            content=query,
-            task_type="retrieval_query"
-        )["embedding"]
-    
-    query_embedding = with_retry(_embed)
-    if not query_embedding:
-        return {
-            "answer": "Error: Failed to generate query embedding.",
-            "metrics": metrics.to_dict(),
-            "chunks_retrieved": 0,
-            "similarity_scores": [],
-        }
+    # Step 1: Embed query (Pinecone Inference)
+    query_embedding = embed_texts(pc, [query], input_type="query")[0]
     
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)
@@ -146,25 +125,13 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
     Run Basic RAG pipeline and yield SSE events.
     """
     metrics = PipelineMetrics("Basic-RAG")
-    yield {"type": "status", "message": "Retrieving context (Gemini Embedding)..."}
+    yield {"type": "status", "message": "Retrieving context (Pinecone embedding)..."}
 
-    index, client = _get_clients()
+    index, pc = _get_clients()
 
     # Step 1: Embed query
     start = time.time()
-    def _embed():
-        return genai.embed_content(
-            model=_embed_model_id,
-            content=query,
-            task_type="retrieval_query"
-        )["embedding"]
-    
-    query_embedding = with_retry(_embed)
-    if not query_embedding:
-        answer = "Error: Failed to generate query embedding."
-        yield {"type": "chunk", "text": answer, "tokens": 0}
-        yield {"type": "done", "metrics": metrics.to_dict(), "answer": answer}
-        return
+    query_embedding = embed_texts(pc, [query], input_type="query")[0]
 
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)

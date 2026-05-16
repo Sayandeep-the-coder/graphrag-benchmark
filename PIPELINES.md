@@ -1,333 +1,149 @@
 # Pipeline Implementation Guide
 
-Detailed implementation reference for all three inference pipelines.
+Reference for the three inference pipelines. **Source files are authoritative**; this document summarizes behavior and tunables.
 
 ---
 
-## Pipeline 1 — LLM Only
+## Shared conventions
 
-**Purpose:** Worst-case token baseline. No retrieval. LLM answers from training memory alone.
+- Each pipeline exposes `run(query: str) -> dict` with `answer` and `metrics` (`utils/metrics.py`).
+- Pipelines 1 and 2 also expose `run_stream(query)` for SSE (`/compare/stream`).
+- Retries: `utils/retry.with_retry` (exponential backoff, max 3 attempts).
 
-**Token profile:** Low prompt tokens, high risk of hallucination.
+---
 
-```python
-# pipelines/pipeline1_llm_only.py
-import google.generativeai as genai
-import time
-from utils.metrics import PipelineMetrics
-from utils.retry import with_retry
+## Pipeline 1 — LLM only
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+**File:** `pipelines/pipeline1_llm_only.py`
 
-def run(query: str) -> dict:
-    metrics = PipelineMetrics("LLM-Only")
-    prompt = f"Answer the following question accurately.\n\nQuestion: {query}\n\nAnswer:"
+| Item | Value |
+|------|--------|
+| Model | `models/gemini-2.5-flash` |
+| API | Google GenAI REST `generateContent` / `streamGenerateContent` |
+| Retrieval | None |
+| Purpose | Baseline: lowest context tokens, highest hallucination risk on medical facts |
 
-    start = time.time()
-    response = with_retry(lambda: model.generate_content(prompt))
-    answer = response.text
-    metrics.record(prompt, answer, start)
+**Prompt shape:**
 
-    return {"answer": answer, "metrics": metrics.to_dict()}
+```text
+Answer the question accurately.
+Q: {query}
+A:
 ```
 
-**When to use P1 results:** Show as ceiling for token cost + floor for accuracy. Every other pipeline should beat it on accuracy. GraphRAG should beat it on tokens.
+**When to use P1:** Establish a no-retrieval baseline. P2 and P3 should beat P1 on factual accuracy when ground truth is available.
 
 ---
 
 ## Pipeline 2 — Basic RAG (Pinecone)
 
-**Purpose:** Industry-standard baseline. Vector similarity retrieval + LLM synthesis.
+**Files:** `pipelines/pipeline2_basic_rag/ingest.py`, `query.py`
 
-**Token profile:** High prompt tokens (5 chunks × ~200 tokens each = ~1000 extra tokens per query).
+| Item | Value |
+|------|--------|
+| Generation | `models/gemma-4-26b-a4b-it` (REST) |
+| Embeddings | `models/embedding-001` (Google GenAI `embed_content`) |
+| Vector store | Pinecone, namespace default `medical-rag` |
+| Default `top_k` | 3 |
+| Chunking (ingest) | `CHUNK_SIZE=1000`, `CHUNK_OVERLAP=100` |
 
 ### Ingest
 
-```python
-# pipelines/pipeline2_basic_rag/ingest.py
-from pinecone import Pinecone, ServerlessSpec
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-import glob, os
-from tqdm import tqdm
+1. Read `.txt` from `--path` (default `./data/medical`).
+2. Split with `RecursiveCharacterTextSplitter`.
+3. Batch-embed chunks with `models/embedding-001`.
+4. Upsert to Pinecone with metadata `{"text": chunk}`.
 
-pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index = pc.Index(os.getenv("PINECONE_INDEX_NAME"))
-embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
-CHUNK_SIZE = 512    # tune: smaller = more precise = fewer tokens
-CHUNK_OVERLAP = 64
-BATCH_SIZE = 100    # Pinecone upsert batch size
-
-def ingest_documents(docs_folder: str):
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP
-    )
-
-    all_chunks, all_ids, all_metadata = [], [], []
-
-    for filepath in tqdm(glob.glob(f"{docs_folder}/**/*.txt", recursive=True)):
-        with open(filepath, encoding="utf-8") as f:
-            text = f.read()
-
-        chunks = splitter.split_text(text)
-        for i, chunk in enumerate(chunks):
-            chunk_id = f"{os.path.basename(filepath)}_chunk_{i}"
-            all_chunks.append(chunk)
-            all_ids.append(chunk_id)
-            all_metadata.append({"source": filepath, "chunk_index": i, "text": chunk})
-
-    print(f"Total chunks: {len(all_chunks)}")
-
-    # Batch embed + upsert
-    for i in range(0, len(all_chunks), BATCH_SIZE):
-        batch_texts = all_chunks[i:i+BATCH_SIZE]
-        batch_ids = all_ids[i:i+BATCH_SIZE]
-        batch_meta = all_metadata[i:i+BATCH_SIZE]
-
-        embeddings = embedder.encode(batch_texts).tolist()
-        vectors = list(zip(batch_ids, embeddings, batch_meta))
-        index.upsert(vectors=vectors, namespace="wikipedia-2025")
-
-    print("Pinecone ingest complete.")
-
-if __name__ == "__main__":
-    ingest_documents("./data/wikipedia")
+```bash
+python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace medical-rag
 ```
 
-### Query
+### Query — dynamic top-K
 
-```python
-# pipelines/pipeline2_basic_rag/query.py
-from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
-import google.generativeai as genai
-import time, os
-from utils.metrics import PipelineMetrics
-from utils.retry import with_retry
+1. Embed the user query with `models/embedding-001`.
+2. Query Pinecone with `top_k = max(15, top_k * 2)`.
+3. Walk matches in score order; **stop** when:
+   - `score < 0.5` (`min_score_threshold`), or
+   - score drops more than `0.05` from the previous match (`score_drop_threshold`), or
+   - `len(chunks) >= top_k`.
+4. Build prompt with joined chunks; call Gemma 4 via REST.
 
-pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index = pc.Index(os.getenv("PINECONE_INDEX_NAME"))
-embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+### Tuning (Pipeline 2)
 
-TOP_K = 5  # tune: higher = more context = more tokens
-
-def run(query: str, top_k: int = TOP_K) -> dict:
-    metrics = PipelineMetrics("Basic-RAG")
-
-    # Step 1: embed query
-    query_embedding = embedder.encode(query).tolist()
-
-    # Step 2: Pinecone similarity search
-    results = index.query(
-        vector=query_embedding,
-        top_k=top_k,
-        namespace="wikipedia-2025",
-        include_metadata=True
-    )
-
-    chunks = [match["metadata"]["text"] for match in results["matches"]]
-    context = "\n\n---\n\n".join(chunks)
-
-    # Step 3: build prompt + call Gemini
-    prompt = f"""You are a helpful assistant. Use ONLY the context below to answer.
-
-Context:
-{context}
-
-Question: {query}
-
-Answer:"""
-
-    start = time.time()
-    response = with_retry(lambda: model.generate_content(prompt))
-    answer = response.text
-    metrics.record(prompt, answer, start)
-
-    return {
-        "answer": answer,
-        "metrics": metrics.to_dict(),
-        "chunks_retrieved": len(chunks),
-        "similarity_scores": [m["score"] for m in results["matches"]]
-    }
-```
-
-### Tuning Guide (Pipeline 2)
-
-| Parameter | Default | Lower → | Higher → |
-|-----------|---------|---------|---------|
-| `chunk_size` | 512 | More precise, less context | More context, more tokens |
-| `chunk_overlap` | 64 | Risk missing context | Redundancy |
-| `top_k` | 5 | Fewer tokens, less coverage | More tokens, better recall |
+| Parameter | Default | Effect |
+|-----------|---------|--------|
+| `top_k` | 3 | Max chunks after dynamic filter |
+| `min_score_threshold` | 0.5 | Minimum similarity to include a chunk |
+| `score_drop_threshold` | 0.05 | Stop when relevance cliff detected |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | 1000 / 100 | Ingest granularity |
+| `namespace` | `medical-rag` | Pinecone namespace |
 
 ---
 
 ## Pipeline 3 — GraphRAG (TigerGraph)
 
-**Purpose:** Graph-powered retrieval. Multi-hop entity traversal = precise, minimal context.
+**Files:** `pipelines/pipeline3_graphrag/ingest.py`, `query.py`
 
-**Token profile:** Lowest prompt tokens — graph returns only relevant entity facts.
+| Item | Value |
+|------|--------|
+| Service | `GRAPHRAG_SERVICE_URL` (default `http://localhost:8000`) |
+| Ingest | `POST /documents/batch` (batches of 10) |
+| Query | `POST /query` |
+| Default retriever | `hybrid` |
+| Default `hop_depth` | 2 |
 
 ### Ingest
 
-```python
-# pipelines/pipeline3_graphrag/ingest.py
-import requests, glob, os
-from tqdm import tqdm
-
-GRAPHRAG_URL = os.getenv("GRAPHRAG_SERVICE_URL", "http://localhost:8000")
-BATCH_SIZE = 10
-
-def ingest_documents(docs_folder: str):
-    filepaths = glob.glob(f"{docs_folder}/**/*.txt", recursive=True)
-    print(f"Ingesting {len(filepaths)} documents into TigerGraph...")
-
-    for i in tqdm(range(0, len(filepaths), BATCH_SIZE)):
-        batch = filepaths[i:i+BATCH_SIZE]
-        batch_docs = []
-
-        for filepath in batch:
-            with open(filepath, encoding="utf-8") as f:
-                text = f.read()
-            batch_docs.append({
-                "content": text,
-                "filename": os.path.basename(filepath),
-                "source": "wikipedia"
-            })
-
-        resp = requests.post(
-            f"{GRAPHRAG_URL}/documents/batch",
-            json={"documents": batch_docs},
-            timeout=120
-        )
-
-        if resp.status_code != 200:
-            print(f"Batch {i} failed: {resp.text}")
-
-    print("TigerGraph GraphRAG ingest complete.")
-    print("Entity extraction and relationship mapping done by service automatically.")
-
-if __name__ == "__main__":
-    ingest_documents("./data/wikipedia")
+```bash
+python pipelines/pipeline3_graphrag/ingest.py --path ./data/medical
 ```
+
+Documents are sent as `{content, filename, source}`; `source` is `medical_csv` when path contains `medical`.
 
 ### Query
 
-```python
-# pipelines/pipeline3_graphrag/query.py
-import requests, time, os
-from utils.metrics import PipelineMetrics
+Payload:
 
-GRAPHRAG_URL = os.getenv("GRAPHRAG_SERVICE_URL", "http://localhost:8000")
-
-def run(
-    query: str,
-    retriever: str = "hybrid",   # "hybrid" | "community" | "sibling"
-    hop_depth: int = 2           # tune: 1=fast/cheap, 3=deep/expensive
-) -> dict:
-    metrics = PipelineMetrics("GraphRAG")
-
-    payload = {
-        "query": query,
-        "retriever": retriever,
-        "hop_depth": hop_depth,
-    }
-
-    start = time.time()
-    resp = requests.post(
-        f"{GRAPHRAG_URL}/query",
-        json=payload,
-        timeout=60
-    )
-    data = resp.json()
-
-    answer = data.get("answer", "")
-    metrics.latency_ms = (time.time() - start) * 1000
-    metrics.prompt_tokens = data.get("prompt_tokens", 0)
-    metrics.completion_tokens = data.get("completion_tokens", 0)
-    metrics.cost_usd = (
-        metrics.prompt_tokens + metrics.completion_tokens
-    ) / 1e6 * 0.075
-
-    return {
-        "answer": answer,
-        "metrics": metrics.to_dict(),
-        "entities_retrieved": data.get("entities", []),
-        "hop_depth": hop_depth,
-        "retriever": retriever,
-    }
+```json
+{
+  "query": "...",
+  "retriever": "hybrid",
+  "hop_depth": 2
+}
 ```
 
-### Retriever Modes
+On failure, returns a sanitized error string (does not crash the backend).
 
-| Retriever | Best For | Token Cost |
-|-----------|---------|-----------|
-| `hybrid` | General queries — balances precision + recall | Medium |
-| `community` | Topic-level questions — returns community summaries | Low |
-| `sibling` | Document-adjacent chunks — preserves narrative flow | Medium |
+### Retriever modes
 
-### Tuning Guide (Pipeline 3)
+| Retriever | Best for |
+|-----------|----------|
+| `hybrid` | General medical Q&A (dashboard default) |
+| `community` | Broad topic / summary questions |
+| `sibling` | Adjacent document context |
+
+### Tuning (Pipeline 3)
 
 | Parameter | Default | Effect |
 |-----------|---------|--------|
-| `hop_depth` | 2 | 1=fewer tokens, 3=more complete answer |
-| `retriever` | hybrid | Switch per query type |
-| `chunk_size` (in graphrag/.env) | 512 | Same as P2 — tune together |
+| `hop_depth` | 2 | Graph traversal depth (1 = cheaper, 3 = richer) |
+| `retriever` | `hybrid` | Retrieval strategy inside GraphRAG service |
 
 ---
 
-## Metrics Utility (Shared)
+## Metrics utility
 
-```python
-# utils/metrics.py
-import time, tiktoken
+**File:** `utils/metrics.py`
 
-enc = tiktoken.get_encoding("cl100k_base")
+- Encoding: tiktoken `cl100k_base`
+- `PipelineMetrics.record(prompt, response, start_time)` sets tokens, latency, and `cost_usd` using `total / 1e6 * 0.075`
 
-class PipelineMetrics:
-    def __init__(self, name: str):
-        self.name = name
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
-        self.latency_ms = 0.0
-        self.cost_usd = 0.0
+GraphRAG may set `prompt_tokens` / `completion_tokens` from the service response before `to_dict()`.
 
-    def record(self, prompt: str, response: str, start_time: float):
-        self.prompt_tokens = len(enc.encode(prompt))
-        self.completion_tokens = len(enc.encode(response))
-        self.latency_ms = (time.time() - start_time) * 1000
-        total = self.prompt_tokens + self.completion_tokens
-        self.cost_usd = total / 1_000_000 * 0.075  # Gemini 1.5 Flash pricing
+---
 
-    def to_dict(self) -> dict:
-        return {
-            "pipeline": self.name,
-            "prompt_tokens": self.prompt_tokens,
-            "completion_tokens": self.completion_tokens,
-            "total_tokens": self.prompt_tokens + self.completion_tokens,
-            "latency_ms": round(self.latency_ms, 2),
-            "cost_usd": round(self.cost_usd, 8),
-        }
-```
+## Retry utility
 
-## Retry Utility (Shared)
+**File:** `utils/retry.py`
 
-```python
-# utils/retry.py
-import time, functools
-
-def with_retry(fn, max_retries=3, base_delay=2.0):
-    for attempt in range(max_retries):
-        try:
-            return fn()
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise
-            delay = base_delay * (2 ** attempt)
-            print(f"Retry {attempt+1}/{max_retries} after {delay}s: {e}")
-            time.sleep(delay)
-```
+`with_retry(fn, max_retries=3, base_delay=2.0)` — used by P1/P2 REST calls.
