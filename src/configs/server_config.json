@@ -1,0 +1,33 @@
+{
+  "db_config": {
+    "hostname": "https://tg-427646af-c4a9-450f-8caa-64e3695260bb.tg-2635877100.i.tgcloud.io",
+    "username": "soujanya",
+    "password": "1n1upTbxEZfBjSRY",
+    "graphname": "GraphRAG",
+    "restppPort": "443",
+    "gsPort": "443",
+    "getToken": true,
+    "default_timeout": 300,
+    "default_mem_threshold": 5000,
+    "default_thread_limit": 8
+  },
+  "llm_config": {
+    "token_limit": 0,
+    "authentication_configuration": {
+      "GOOGLE_API_KEY": "AIzaSyBv_qs-JkE21FBT44q03aM6OSOCIYinR3I"
+    },
+    "completion_service": {
+      "llm_service": "genai",
+      "llm_model": "gemini-2.5-flash",
+      "model_kwargs": {
+        "temperature": 0
+      },
+      "prompt_path": "./common/prompts/google_gemini/"
+    },
+    "embedding_service": {
+      "embedding_model_service": "genai",
+      "model_name": "models/gemini-embedding-001",
+      "dimensions": 1024
+    }
+  }
+}

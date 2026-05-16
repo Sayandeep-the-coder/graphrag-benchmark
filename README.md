@@ -47,7 +47,7 @@ Required:
 - `TG_HOST`, `TG_PASSWORD` (for GraphRAG / TigerGraph)
 - `GRAPHRAG_SERVICE_URL` (default `http://localhost:8000`)
 
-Create a Pinecone index whose **dimension matches** `PINECONE_EMBEDDING_DIMENSION` (default 1024). See `scripts/create_pinecone_index.py`.
+Create a Pinecone index whose **dimension matches** `PINECONE_EMBEDDING_DIMENSION` (default 1024). See `src/scripts/create_pinecone_index.py`.
 
 ### 2. Python
 
@@ -61,7 +61,7 @@ pip install -r requirements.txt
 ### 3. Medical data
 
 ```bash
-python scripts/prepare_medical_data.py
+python src/scripts/prepare_medical_data.py
 ```
 
 Produces `data/medical/knowledge_base.txt`.
@@ -69,24 +69,24 @@ Produces `data/medical/knowledge_base.txt`.
 ### 4. Ingest
 
 ```bash
-python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace medical-rag
-python pipelines/pipeline3_graphrag/ingest.py --path ./data/medical
+python src/pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace medical-rag
+python src/graphrag/pipeline/ingest.py --path ./data/medical
 ```
 
 Optional token check:
 
 ```bash
-python scripts/count_tokens.py --path data/medical/knowledge_base.txt
+python src/scripts/count_tokens.py --path data/medical/knowledge_base.txt
 ```
 
 ### 5. Dashboard
 
 ```bash
-uvicorn dashboard.backend.main:app --host 0.0.0.0 --port 8080 --reload
+uvicorn src.server.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 ```bash
-cd dashboard/frontend && npm install && npm run dev
+cd src/frontend && npm install && npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -99,16 +99,17 @@ Or run the full stack: `docker compose up`.
 
 ```text
 graphrag-benchmark/
-├── data/medical/                 # CSVs + knowledge_base.txt
-├── pipelines/
-│   ├── pipeline1_llm_only.py
-│   ├── pipeline2_basic_rag/      # Pinecone ingest + dynamic top-K query
-│   └── pipeline3_graphrag/       # GraphRAG REST ingest + query
-├── dashboard/backend/            # FastAPI (/compare, /compare/stream, ingest)
-├── dashboard/frontend/           # React benchmark UI
-├── evaluation/                   # accuracy + batch benchmark_runner
-├── scripts/                      # data prep, Pinecone helpers, smoke_test
-└── utils/                        # metrics, retry, security
+├── data/                         # CSVs + knowledge_base.txt
+├── src/
+│   ├── graphrag/                 # GraphRAG specific logic (P3)
+│   ├── pipelines/                # P1 (LLM-Only) and P2 (Basic RAG)
+│   ├── server/                   # FastAPI backend
+│   ├── frontend/                 # React benchmark UI
+│   ├── evaluation/               # Accuracy + batch benchmark_runner
+│   ├── scripts/                  # Data prep, Pinecone helpers, smoke_test
+│   └── utils/                    # Shared metrics, retry, security
+├── results/                      # Saved benchmark reports
+└── docker-compose.yml            # Full stack orchestrator
 ```
 
 ## Contributing

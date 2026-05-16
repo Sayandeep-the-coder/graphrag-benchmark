@@ -1,0 +1,13 @@
+{
+    "db_config": {
+        "hostname": "https://tg-427646af-c4a9-450f-8caa-64e3695260bb.tg-2635877100.i.tgcloud.io",
+        "username": "${TG_USERNAME}",
+        "password": "${TG_PASSWORD}",
+        "graph_name": "GraphRAG"
+    },
+    "llm_config": {
+        "llm_type": "gemini",
+        "api_key": "${GEMINI_API_KEY}",
+        "model_name": "models/gemma-4-26b-a4b-it"
+    }
+}

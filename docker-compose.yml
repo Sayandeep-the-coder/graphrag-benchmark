@@ -8,7 +8,7 @@ services:
       SERVER_CONFIG: /code/configs/server_config.json
       TG_GSQL_PORT: "443"
     volumes:
-      - ./configs:/code/configs:ro
+      - ./src/configs:/code/configs:ro
       - ./data:/code/data:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8000
     networks:
@@ -18,7 +18,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: dashboard/backend/Dockerfile
+      dockerfile: src/server/Dockerfile
     ports:
       - "8080:8080"
     env_file: .env
@@ -36,7 +36,7 @@ services:
 
   frontend:
     build:
-      context: ./dashboard/frontend
+      context: ./src/frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"

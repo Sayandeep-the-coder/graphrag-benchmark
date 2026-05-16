@@ -64,9 +64,6 @@ Thumbs.db
 *.swo
 *~
 
-# GraphRAG specific
-graphrag/
-configs/server_config.json
 
 # Project Specific
 scratch/
