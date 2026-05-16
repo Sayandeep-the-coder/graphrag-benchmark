@@ -21,14 +21,14 @@ Installation from zero to a running medical benchmark dashboard.
 
 1. [aistudio.google.com](https://aistudio.google.com) → API key → `GEMINI_API_KEY`
 
-Used for: P1 (`gemini-2.5-flash`), P2 (`gemma-4-26b-a4b-it`, `embedding-001`), GraphRAG container LLM config.
+Used for: P1/P2 (`gemma-4-26b-a4b-it`), GraphRAG container LLM config.
 
 ### Pinecone
 
 1. [pinecone.io](https://pinecone.io) → API key
 2. Create a **serverless** index:
    - Name: `graphrag-benchmark` (or set `PINECONE_INDEX_NAME`)
-   - **Dimensions: 768** (for `models/embedding-001`)
+   - **Dimensions: 1024** (Optimized for `llama-text-embed-v2`)
    - Metric: cosine
    - Region: e.g. `us-east-1`
 
@@ -178,8 +178,8 @@ The default medical dashboard uses `data/medical` and namespace `medical-rag`.
 
 | Issue | Fix |
 |-------|-----|
-| Pinecone dimension mismatch | Recreate index at **768** for `embedding-001`: `python scripts/recreate_pinecone_index.py` |
-| `embedding-001` / model 404 | Confirm model IDs in [Google AI models](https://ai.google.dev/gemini-api/docs/models); API key has access |
+| Pinecone dimension mismatch | Recreate index at **1024** for `llama-text-embed-v2`: `python scripts/recreate_pinecone_index.py` |
+| Model 404 / API Error | Confirm model IDs (`models/gemma-4-26b-a4b-it`) and ensure API key has access to v1beta endpoints |
 | TigerGraph 401 / REST-10016 | See [TIGERGRAPH_CLOUD_SETUP.md](TIGERGRAPH_CLOUD_SETUP.md); set `TG_GET_TOKEN=true`, regenerate config, verify with `test_tigergraph_connection.py` |
 | TigerGraph permission denied | Grant DB user **globaldesigner** or **superuser** in Savanna, then `docker compose restart graphrag` |
 | GraphRAG connection error in UI | `docker compose logs graphrag`; ensure `GRAPHRAG_SERVICE_URL` reachable from backend |

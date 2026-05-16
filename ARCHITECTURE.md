@@ -22,8 +22,8 @@
 ┌───────────────┐   ┌───────────────────┐   ┌──────────────────────┐
 │  Pipeline 1   │   │    Pipeline 2     │   │     Pipeline 3       │
 │   LLM only    │   │    Basic RAG      │   │      GraphRAG        │
-│ gemini-2.5-   │   │ Pinecone + Gemma 4│   │ GraphRAG REST :8000  │
-│    flash      │   │ + embedding-001   │   │ → TigerGraph Savanna │
+│    Gemma 4    │   │ Pinecone + Gemma 4│   │ GraphRAG REST :8000  │
+│ (no context)  │   │ + Llama-Embed-v2  │   │ → TigerGraph Savanna │
 └───────────────┘   └───────────────────┘   └──────────────────────┘
 ```
 
@@ -43,7 +43,8 @@ Medical CSVs  →  prepare_medical_data.py  →  data/medical/knowledge_base.txt
  RecursiveCharacterTextSplitter    POST /documents/batch
  chunk_size=1000, overlap=100      → GraphRAG Docker service
         │                               │
- models/embedding-001               Entity + relationship extraction
+ Llama-text-embed-v2                    Entity + relationship extraction
+ (Pinecone Inference)                   │
         │                               │
         ▼                               ▼
  Pinecone (namespace: medical-rag)   TigerGraph graph
@@ -60,7 +61,7 @@ Example: *"What are the symptoms of Malaria?"*
 
 | Pipeline | Steps | Token profile |
 |----------|--------|---------------|
-| **1 — LLM only** | Prompt with question only → `gemini-2.5-flash` REST | Low prompt; no grounded context |
+| **1 — LLM only** | Prompt with question only → `gemma-4-26b-a4b-it` REST | Low prompt; no grounded context |
 | **2 — Basic RAG** | Embed query → Pinecone (dynamic top-K) → prompt with chunks → `gemma-4-26b-a4b-it` REST | Higher (multiple chunks in prompt) |
 | **3 — GraphRAG** | `POST /query` to GraphRAG service (`hybrid`, `hop_depth=2`) | Lower than P2 when graph context is selective |
 
@@ -77,7 +78,7 @@ The dashboard computes **token reduction %** as `(P2 total tokens − P3 total t
 | Index | `PINECONE_INDEX_NAME` (default `graphrag-benchmark`) |
 | Namespace | `medical-rag` (dashboard default) |
 | Embeddings | `models/embedding-001` |
-| Index dimension | **768** (must match embedding model output) |
+| Index dimension | **1024** (Optimized for medical context) |
 | Metric | cosine |
 | Chunking | `CHUNK_SIZE=1000`, `CHUNK_OVERLAP=100` |
 

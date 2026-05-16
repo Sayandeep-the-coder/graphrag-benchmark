@@ -1,7 +1,7 @@
 # BUILD_PROMPT.md
 ## Master AI Build Prompt — GraphRAG Inference Benchmark
 
-> **Note:** This file is the original greenfield build spec for the hackathon Wikipedia benchmark. The **implemented repo** uses the **medical dataset** and the models in [README.md](README.md) / [PIPELINES.md](PIPELINES.md) (`gemini-2.5-flash`, `gemma-4-26b-a4b-it`, `embedding-001`). Prefer those docs over the stack list below when extending the codebase.
+> **Note:** This file provides a master prompt to scaffold a project similar to this medical benchmark. The **implemented repo** uses the models and settings defined in [README.md](README.md) and [PIPELINES.md](PIPELINES.md) (`gemma-4-26b-a4b-it`, `llama-text-embed-v2`).
 
 Use this prompt with any AI coding assistant to scaffold a similar project. Attach the current `PRD.md`, `ARCHITECTURE.md`, `SETUP.md`, `PIPELINES.md`, and `EVALUATION.md` for up-to-date behavior.
 
@@ -30,15 +30,15 @@ reduces token consumption by 40-70% vs Basic RAG (Pinecone vector search) while 
 or improving answer accuracy. The project is for the TigerGraph GraphRAG Inference Hackathon.
 
 === TECH STACK (STRICT — DO NOT SUBSTITUTE) ===
-- LLM: Google Gemini 1.5 Flash (google-generativeai SDK)
+- LLM: Google Gemma 4 (models/gemma-4-26b-a4b-it)
 - Vector DB: Pinecone Serverless (pinecone-client v3+)
-- Embeddings: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions)
+- Embeddings: Pinecone Inference (llama-text-embed-v2, 1024 dimensions)
 - Graph DB + RAG: TigerGraph via official GraphRAG service (REST API at localhost:8000)
 - Backend: FastAPI with uvicorn
 - Frontend: React 18 + Tailwind CSS
-- Accuracy eval: bert-score library + HuggingFace Inference API
+- Accuracy eval: bert-score library + HuggingFace Inference API (Mistral 7B judge)
 - Token counting: tiktoken (cl100k_base encoding)
-- Dataset: Wikipedia (plain .txt files in ./data/wikipedia/)
+- Dataset: Medical (plain .txt files in ./data/medical/)
 
 === WHAT TO BUILD ===
 
@@ -117,27 +117,27 @@ File: pipelines/pipeline1_llm_only.py
 STEP 4 — Pipeline 2 (Basic RAG with Pinecone)
 
 File: pipelines/pipeline2_basic_rag/ingest.py
-- Read all .txt files from ./data/wikipedia/
-- Split with RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=64)
-- Embed with SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+- Read all .txt files from ./data/medical/
+- Split with RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+- Embed with Pinecone Inference (llama-text-embed-v2, 1024 dims)
 - Upsert to Pinecone in batches of 100
 - Index name from PINECONE_INDEX_NAME env var
-- Namespace: "wikipedia-2025"
-- Metadata per vector: {"text": chunk_text, "source": filepath, "chunk_index": int}
+- Namespace: "medical-rag"
+- Metadata per vector: {"text": chunk_text}
 - Show progress bar with tqdm
 
 File: pipelines/pipeline2_basic_rag/query.py
 - Function run(query: str, top_k: int = 5) -> dict
-- Embed query, search Pinecone, retrieve top_k chunks
+- Embed query, search Pinecone, retrieve top_k chunks (using dynamic thresholds: score < 0.2 filter)
 - Build prompt: "Context:\n{chunks}\n\nQuestion: {query}\n\nAnswer:"
-- Call Gemini with retry
-- Return: {"answer": str, "metrics": dict, "chunks_retrieved": int, "similarity_scores": list}
+- Call Gemma 4 with retry
+- Return: {"answer": str, "metrics": dict, "chunks_retrieved": int}
 
 STEP 5 — Pipeline 3 (GraphRAG with TigerGraph)
 
 File: pipelines/pipeline3_graphrag/ingest.py
 - POST each document to {GRAPHRAG_SERVICE_URL}/documents/batch (batches of 10)
-- Each document: {"content": text, "filename": basename, "source": "wikipedia"}
+- Each document: {"content": text, "filename": basename, "source": "medical"}
 - Handle 200 vs error responses with logging
 - Show tqdm progress
 

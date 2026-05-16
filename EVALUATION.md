@@ -160,7 +160,7 @@ python -m evaluation.benchmark_runner
 python evaluation/benchmark_runner.py
 ```
 
-Each entry in `BENCHMARK_QUERIES` uses `question` and `correct_answer` (symptoms, precautions, disease definitions from the medical KB). P2 is called with `namespace="medical-rag"` and `top_k=3` to match the dashboard defaults.
+Each entry in `BENCHMARK_QUERIES` uses `question` and `correct_answer` (symptoms, precautions, disease definitions from the medical KB). P2 is called with `namespace="medical-rag"` and `top_k=5` to match the dashboard defaults.
 
 Summary fields in the report:
 
@@ -192,4 +192,4 @@ Summary fields in the report:
 2. **Switch retriever to `community`** for broad topic questions
 3. **Add explicit system prompt** to GraphRAG: "Answer using only retrieved graph facts."
 4. **Better ground truths** — write your own for your specific dataset
-5. **Increase top_k** in Pinecone to 7 for better Basic RAG baseline (makes GraphRAG comparison stronger)
+5. **Increase top_k** in Pinecone to 10 for better Basic RAG baseline (makes GraphRAG comparison stronger)

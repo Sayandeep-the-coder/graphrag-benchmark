@@ -23,6 +23,9 @@ class PipelineResult(BaseModel):
     entities_retrieved: list | None = None
     retriever: str | None = None
     hop_depth: int | None = None
+    query_category: str | None = None
+    route_confidence: str | None = None
+    clinical_signals: dict | None = None
 
 
 class CompareResponse(BaseModel):
@@ -32,7 +35,6 @@ class CompareResponse(BaseModel):
     graphrag: PipelineResult | None = None
     token_reduction_pct: float | None = None
     accuracy: dict | None = None
-
 
 class HealthResponse(BaseModel):
     """Response from the /health endpoint."""
@@ -44,3 +46,18 @@ class IngestStatus(BaseModel):
     pipeline: str
     status: str
     message: str
+
+
+class BenchmarkQuery(BaseModel):
+    """Model for a single benchmark query."""
+    category: str
+    question: str
+    correct_answer: str
+    hop_depth: int | None = None
+
+
+class BenchmarkSampleRequest(BaseModel):
+    """Request body for running a single benchmark sample."""
+    index: int
+    namespace: str = "medical-rag"
+    top_k: int = 3

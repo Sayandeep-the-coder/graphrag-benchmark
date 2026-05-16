@@ -82,8 +82,8 @@ TG_GET_TOKEN=true
 # Optional overrides (defaults shown)
 # TG_RESTPP_PORT=443
 # TG_GSQL_PORT=14240
-# GRAPHRAG_LLM_MODEL=gemini-2.5-flash
-# GRAPHRAG_EMBEDDING_MODEL=models/gemini-embedding-exp-03-07
+# GRAPHRAG_LLM_MODEL=gemma-4-26b-a4b-it
+# GRAPHRAG_EMBEDDING_MODEL=models/text-embedding-004
 
 GRAPHRAG_SERVICE_URL=http://localhost:8000
 ```

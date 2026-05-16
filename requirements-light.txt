@@ -1,0 +1,40 @@
+# Lightweight Requirements - CPU-only
+# Avoids 1GB+ NVIDIA CUDA dependencies
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Core
+fastapi==0.136.1
+uvicorn==0.46.0
+python-dotenv==1.2.2
+requests==2.34.1
+google-generativeai==0.8.6
+google-genai==2.2.0
+pinecone==9.0.0
+pyTigerGraph>=2.0.2
+
+# Data & Utils
+pandas==3.0.3
+numpy==1.26.4
+networkx==3.6.1
+langchain-text-splitters==1.1.2
+tqdm==4.67.3
+rich==15.0.0
+pydantic==2.13.4
+pydantic-settings==2.14.1
+
+# Visualization & Evaluation
+matplotlib==3.10.9
+evaluate==0.4.6
+datasets==4.8.5
+
+# ML Frameworks (CPU-only version)
+torch==2.3.1+cpu
+gliner==0.2.14
+sentence-transformers==3.0.1
+faiss-cpu==1.8.0.post1
+
+# Async & Networking
+aiohttp==3.13.5
+httpx==0.28.1
+tenacity==9.1.4

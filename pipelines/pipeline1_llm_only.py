@@ -1,7 +1,7 @@
 """
 Pipeline 1 — LLM Only
 
-Sends the query directly to gemini-2.5-flash with no retrieval context.
+Sends the query directly to gemma-4-26b-a4b-it with no retrieval context.
 Serves as the lowest-context baseline (high hallucination risk on medical facts).
 """
 

@@ -1,9 +1,9 @@
 # Product Requirements Document
 ## Medical GraphRAG Inference Benchmark
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Status:** Active  
-**Last updated:** 2026
+**Last updated:** 2026-05-16
 
 ---
 
@@ -50,7 +50,7 @@ Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally
 | ID | Requirement |
 |----|-------------|
 | P1-01 | Accept natural language query |
-| P1-02 | Call `models/gemini-2.5-flash` via GenAI REST with **no** retrieval context |
+| P1-02 | Call `models/gemma-4-26b-a4b-it` via GenAI REST with **no** retrieval context |
 | P1-03 | Return answer, token metrics, latency, cost |
 | P1-04 | Baseline for minimum prompt size / ungrounded answers |
 
@@ -59,9 +59,9 @@ Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally
 | ID | Requirement |
 |----|-------------|
 | P2-01 | Chunk medical KB (`CHUNK_SIZE=1000`, `OVERLAP=100`) |
-| P2-02 | Embed with `models/embedding-001` |
+| P2-02 | Embed with `llama-text-embed-v2` (Pinecone Inference) |
 | P2-03 | Store in Pinecone (namespace `medical-rag`) |
-| P2-04 | Dynamic top-K retrieval (score threshold + cliff detection) |
+| P2-04 | Dynamic top-K retrieval (score threshold `0.2` + cliff detection) |
 | P2-05 | Generate with `models/gemma-4-26b-a4b-it` (REST) using retrieved chunks only |
 | P2-06 | Return answer + chunk count + similarity scores + metrics |
 
@@ -90,7 +90,7 @@ Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally
 
 | ID | Requirement |
 |----|-------------|
-| A-01 | LLM-as-judge (Gemma-based in `llm_judge.py`) |
+| A-01 | LLM-as-judge (Mistral 7B in `llm_judge.py`) |
 | A-02 | BERTScore semantic F1 |
 | A-03 | Targets: ≥90% judge pass rate; BERTScore F1 rescaled ≥ 0.55 (bonus thresholds) |
 
@@ -100,9 +100,9 @@ Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally
 
 | Layer | Technology |
 |-------|------------|
-| LLM — P1 | `models/gemini-2.5-flash` |
+| LLM — P1 | `models/gemma-4-26b-a4b-it` |
 | LLM — P2 | `models/gemma-4-26b-a4b-it` |
-| Embeddings — P2 | `models/embedding-001` |
+| Embeddings — P2 | `llama-text-embed-v2` (Pinecone Inference) |
 | Vector DB | Pinecone Serverless |
 | Graph | TigerGraph Savanna + `tigergraph/graphrag` Docker |
 | Backend | FastAPI (Python 3.11+) |
@@ -128,6 +128,6 @@ Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally
 | Risk | Mitigation |
 |------|------------|
 | Gemma / Gemini rate limits | `with_retry` exponential backoff |
-| Pinecone dimension mismatch | Index at 768 for `embedding-001` |
+| Pinecone dimension mismatch | Index at 1024 for `llama-text-embed-v2` |
 | GraphRAG unavailable | Sanitized errors in P3; compose health checks |
 | Medical hallucination on P1 | Use P2/P3 for grounded answers; judge in eval |

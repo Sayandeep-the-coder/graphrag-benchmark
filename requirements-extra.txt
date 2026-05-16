@@ -1,0 +1,11 @@
+# Optional heavy dependencies for local ML inference
+gliner==0.2.14
+sentence-transformers==3.0.1
+faiss-cpu==1.8.0.post1
+biopython==1.84
+pdfplumber==0.11.4
+
+# ML Frameworks (CPU versions recommended for lightweight deployment)
+torch==2.3.1
+torchvision==0.18.1
+torchaudio==2.3.1

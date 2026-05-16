@@ -8,22 +8,22 @@ The dashboard runs all three pipelines on the same query and compares latency, t
 
 | # | Pipeline | Generation model | Retrieval | Expected token profile |
 |---|----------|------------------|-----------|----------------------|
-| **1** | **LLM-Only** | `models/gemini-2.5-flash` | None (baseline; hallucination risk) | Lowest prompt tokens |
-| **2** | **Basic RAG** | `models/gemma-4-26b-a4b-it` | Pinecone + `models/embedding-001` | Highest (retrieved chunks in prompt) |
+| **1** | **LLM-Only** | `models/gemma-4-26b-a4b-it` | None (baseline; hallucination risk) | Lowest prompt tokens |
+| **2** | **Basic RAG** | `models/gemma-4-26b-a4b-it` | Pinecone + `llama-text-embed-v2` | Highest (retrieved chunks in prompt) |
 | **3** | **GraphRAG** | TigerGraph GraphRAG service (Docker) | Multi-hop graph (`hybrid` / `community` / `sibling`) | Medium (graph-selected context) |
 
-Pipeline 2 uses **dynamic top-K**: it fetches up to 15 vector matches, then keeps chunks while similarity stays above `0.5` and scores do not drop more than `0.05` between consecutive hits (capped at `top_k`, default 3).
+Pipeline 2 uses **dynamic top-K**: it fetches up to 15 vector matches, then keeps chunks while similarity stays above `0.2` and scores do not drop more than `0.05` between consecutive hits (capped at `top_k`, default 5).
 
 > [!NOTE]
-> Pipelines 1 and 2 call the Google GenAI **REST API** (not the SDK `generate_content` path) for stable parsing with Gemma/Gemini on medical queries. Pipeline 3 delegates generation to the TigerGraph GraphRAG container.
+> Pipelines 1 and 2 call the Google GenAI **REST API** (not the SDK `generate_content` path) for stable parsing with Gemma on medical queries. Pipeline 3 delegates generation to the TigerGraph GraphRAG container.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| LLM (P1) | `models/gemini-2.5-flash` |
+| LLM (P1) | `models/gemma-4-26b-a4b-it` |
 | LLM (P2) | `models/gemma-4-26b-a4b-it` |
-| Embeddings (P2) | `models/embedding-001` (Google GenAI) |
+| Embeddings (P2) | `llama-text-embed-v2` (Pinecone Inference) |
 | Vector DB | Pinecone Serverless, namespace `medical-rag` |
 | Graph DB | TigerGraph Savanna + `tigergraph/graphrag` Docker image |
 | Backend | FastAPI + Uvicorn |
@@ -47,7 +47,7 @@ Required:
 - `TG_HOST`, `TG_PASSWORD` (for GraphRAG / TigerGraph)
 - `GRAPHRAG_SERVICE_URL` (default `http://localhost:8000`)
 
-Create a Pinecone index whose **dimension matches** `models/embedding-001` output (768). See `scripts/create_pinecone_index.py`.
+Create a Pinecone index whose **dimension matches** `PINECONE_EMBEDDING_DIMENSION` (default 1024). See `scripts/create_pinecone_index.py`.
 
 ### 2. Python
 

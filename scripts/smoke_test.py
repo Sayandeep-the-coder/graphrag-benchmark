@@ -8,7 +8,11 @@ Runs 7 checks in order, printing ✅ or ❌ per check.
 
 import os
 import sys
-import time
+
+# Ensure UTF-8 output on Windows for emojis
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 from dotenv import load_dotenv
 
@@ -17,19 +21,18 @@ load_dotenv()
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-checks_passed = 0
 checks_total = 7
 
 
-def check(name, fn):
+def check(name, fn, results):
     """Run a check function and report result."""
-    global checks_passed
     try:
         result = fn()
         print(f"  [PASS] {name}: {result}")
-        checks_passed += 1
-    except Exception as e:
+        results.append(True)
+    except (RuntimeError, ValueError, TypeError, OSError, ImportError) as e:
         print(f"  [FAIL] {name}: {e}")
+        results.append(False)
 
 
 def check_gemini():
@@ -106,19 +109,21 @@ def check_token_comparison():
 
 
 def main():
+    results = []
     print(f"\n{'='*60}")
     print("  GraphRAG Inference Benchmark - Smoke Test")
     print(f"{'='*60}\n")
 
-    check("Gemini API", check_gemini)
-    check("Pinecone Index", check_pinecone)
-    check("GraphRAG Service", check_graphrag)
-    check("Pipeline 1 (LLM-Only)", check_pipeline1)
-    check("Pipeline 2 (Basic RAG)", check_pipeline2)
-    check("Pipeline 3 (GraphRAG)", check_pipeline3)
-    check("Token Comparison (P3 < P2)", check_token_comparison)
+    check("Gemini API", check_gemini, results)
+    check("Pinecone Index", check_pinecone, results)
+    check("GraphRAG Service", check_graphrag, results)
+    check("Pipeline 1 (LLM-Only)", check_pipeline1, results)
+    check("Pipeline 2 (Basic RAG)", check_pipeline2, results)
+    check("Pipeline 3 (GraphRAG)", check_pipeline3, results)
+    check("Token Comparison (P3 < P2)", check_token_comparison, results)
 
     print(f"\n{'='*60}")
+    checks_passed = sum(results)
     if checks_passed == checks_total:
         print(f"  All {checks_total} checks passed - All systems go!")
     else:

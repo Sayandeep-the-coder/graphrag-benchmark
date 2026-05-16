@@ -14,9 +14,10 @@ import { motion } from 'framer-motion';
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'ingestion', label: 'Data Ingestion', icon: Database },
+    { id: 'benchmark', label: 'Run Benchmark', icon: Activity },
     { id: 'evaluations', label: 'System Logs', icon: Terminal },
     { id: 'knowledge', label: 'Knowledge Map', icon: Share2 },
-    { id: 'alerts', label: 'System Health', icon: Bell },
   ];
 
   return (

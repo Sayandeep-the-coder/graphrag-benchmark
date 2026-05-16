@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
  * Props:
  *  events: Array<{ timestamp: string, message: string, level: "info" | "success" | "warning" }>
  */
-export default function SystemConsole({ events = [] }) {
+export default function SystemConsole({ events = [], onClear }) {
   const consoleEndRef = useRef(null);
 
   useEffect(() => {
@@ -22,7 +22,17 @@ export default function SystemConsole({ events = [] }) {
           <div className="w-2 h-2 rounded-full bg-accent-neon shadow-[0_0_8px_rgba(0,255,163,0.5)]"></div>
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live System Console</span>
         </div>
-        <span className="text-[10px] font-mono text-gray-600">STITCH_OS v2.4.0</span>
+        <div className="flex items-center gap-4">
+          {onClear && (
+            <button 
+              onClick={onClear}
+              className="text-[9px] font-black uppercase text-gray-600 hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+          )}
+          <span className="text-[10px] font-mono text-gray-600">STITCH_OS v2.4.0</span>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed custom-scrollbar">
         {events.length === 0 ? (

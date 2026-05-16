@@ -5,16 +5,23 @@ Format: [Semantic Versioning](https://semver.org)
 
 ---
 
-## [Unreleased]
+## [1.2.0] — 2026-05-16
 
 ### Changed
-- Aligned documentation with medical dataset and current models (see README, ARCHITECTURE, PIPELINES, SETUP, PRD, EVALUATION)
-- Pinecone index helper scripts default to dimension **768** for `models/embedding-001`
-- GraphRAG ingest default path: `./data/medical`
+- **Comprehensive Documentation Sync:** All core Markdown files (`README.md`, `PRD.md`, `ARCHITECTURE.md`, `SETUP.md`, `PIPELINES.md`, `EVALUATION.md`) updated to reflect current technical implementation.
+- **Model Standardization:** Standardized all pipelines to use `models/gemma-4-26b-a4b-it` as the primary LLM.
+- **Embedding Alignment:** Updated Basic RAG to use `llama-text-embed-v2` via Pinecone Inference (1024 dimensions), replacing `embedding-001`.
+- **Retrieval Optimization:** Synchronized dynamic `top_k` logic and similarity thresholds (score < 0.2) across documentation and code.
+- **Master Prompt Update:** Refactored `BUILD_PROMPT.md` to use the medical dataset and current model IDs.
 
-### Planned
-- Round 2 scale-up to larger corpora
-- Query history persistence
+---
+
+## [1.1.0] — 2026-05-14
+
+### Changed
+- Transitioned project focus from Wikipedia to **Medical Benchmark** (DrugBank/Symptoms dataset).
+- Updated ingest scripts to default to `./data/medical`.
+- Integrated TigerGraph Savanna as the primary Knowledge Graph provider.
 
 ---
 

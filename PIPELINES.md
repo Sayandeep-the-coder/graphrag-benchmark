@@ -18,7 +18,7 @@ Reference for the three inference pipelines. **Source files are authoritative**;
 
 | Item | Value |
 |------|--------|
-| Model | `models/gemini-2.5-flash` |
+| Model | `models/gemma-4-26b-a4b-it` |
 | API | Google GenAI REST `generateContent` / `streamGenerateContent` |
 | Retrieval | None |
 | Purpose | Baseline: lowest context tokens, highest hallucination risk on medical facts |
@@ -42,16 +42,16 @@ A:
 | Item | Value |
 |------|--------|
 | Generation | `models/gemma-4-26b-a4b-it` (REST) |
-| Embeddings | `models/embedding-001` (Google GenAI `embed_content`) |
+| Embeddings | `llama-text-embed-v2` (Pinecone Inference) |
 | Vector store | Pinecone, namespace default `medical-rag` |
-| Default `top_k` | 3 |
+| Default `top_k` | 5 |
 | Chunking (ingest) | `CHUNK_SIZE=1000`, `CHUNK_OVERLAP=100` |
 
 ### Ingest
 
 1. Read `.txt` from `--path` (default `./data/medical`).
 2. Split with `RecursiveCharacterTextSplitter`.
-3. Batch-embed chunks with `models/embedding-001`.
+3. Batch-embed chunks with `llama-text-embed-v2` (1024 dimensions).
 4. Upsert to Pinecone with metadata `{"text": chunk}`.
 
 ```bash
@@ -60,21 +60,21 @@ python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace
 
 ### Query — dynamic top-K
 
-1. Embed the user query with `models/embedding-001`.
-2. Query Pinecone with `top_k = max(15, top_k * 2)`.
+1. Embed the user query with `llama-text-embed-v2` (input_type="query").
+2. Query Pinecone with `top_k = 15` (to allow for threshold filtering).
 3. Walk matches in score order; **stop** when:
-   - `score < 0.5` (`min_score_threshold`), or
-   - score drops more than `0.05` from the previous match (`score_drop_threshold`), or
-   - `len(chunks) >= top_k`.
+   - `score < 0.2` (`min_score_threshold`), or
+   - score drops more than `0.1` from the previous match (`score_drop_threshold`), or
+   - `len(chunks) >= 5` (`top_k`).
 4. Build prompt with joined chunks; call Gemma 4 via REST.
 
 ### Tuning (Pipeline 2)
 
 | Parameter | Default | Effect |
 |-----------|---------|--------|
-| `top_k` | 3 | Max chunks after dynamic filter |
-| `min_score_threshold` | 0.5 | Minimum similarity to include a chunk |
-| `score_drop_threshold` | 0.05 | Stop when relevance cliff detected |
+| `top_k` | 5 | Max chunks after dynamic filter |
+| `min_score_threshold` | 0.2 | Minimum similarity to include a chunk |
+| `score_drop_threshold` | 0.1 | Stop when relevance cliff detected |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | 1000 / 100 | Ingest granularity |
 | `namespace` | `medical-rag` | Pinecone namespace |
 

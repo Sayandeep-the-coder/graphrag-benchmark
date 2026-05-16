@@ -39,16 +39,16 @@ def build_config() -> dict:
             },
             "completion_service": {
                 "llm_service": "genai",
-                "llm_model": os.getenv("GRAPHRAG_LLM_MODEL", "gemini-2.5-flash"),
+                "llm_model": os.getenv("GRAPHRAG_LLM_MODEL", "gemma-4-26b-a4b-it"),
                 "model_kwargs": {"temperature": 0},
                 "prompt_path": "./common/prompts/google_gemini/",
             },
             "embedding_service": {
                 "embedding_model_service": "genai",
                 "model_name": os.getenv(
-                    "GRAPHRAG_EMBEDDING_MODEL", "models/gemini-embedding-001"
+                    "GRAPHRAG_EMBEDDING_MODEL", "models/text-embedding-004"
                 ),
-                "dimensions": int(os.getenv("GRAPHRAG_EMBEDDING_DIM", "1024")),
+                "dimensions": int(os.getenv("GRAPHRAG_EMBEDDING_DIM", "768")),
             },
         },
     }
