@@ -11,8 +11,8 @@ export default function AccuracyBadge({ verdict }) {
     <span
       className={`badge-premium gap-1.5 ${
         isPASS
-          ? "bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
-          : "bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
+          ? "bg-accent-neon/10 text-accent-neon border-accent-neon/30 shadow-[0_0_15px_rgba(0,255,163,0.15)]"
+          : "bg-accent-warning/10 text-accent-warning border-accent-warning/30 shadow-[0_0_15px_rgba(255,138,0,0.15)]"
       }`}
     >
       {isPASS ? (

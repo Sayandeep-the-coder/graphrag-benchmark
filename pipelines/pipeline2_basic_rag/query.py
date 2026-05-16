@@ -1,8 +1,8 @@
 """
 Pipeline 2 — Basic RAG Query
 
-Uses Sentence-Transformers for embeddings (Gemma-compatible)
-to search Pinecone, build a context prompt, and call Gemma.
+Embeds queries with Pinecone Inference, retrieves from Pinecone with dynamic top-K,
+then generates with models/gemma-4-26b-a4b-it via the GenAI REST API.
 """
 
 import os
@@ -10,11 +10,9 @@ import time
 import httpx
 import json
 import asyncio
-from google import genai
 from dotenv import load_dotenv
-from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
 
+from utils.embeddings import get_pinecone_client, embed_texts
 from utils.metrics import PipelineMetrics
 from utils.retry import with_retry
 
@@ -23,25 +21,18 @@ load_dotenv()
 # --- Lazy-initialized clients ---
 _pc = None
 _index = None
-_client = None
-_embed_model = None
 _model_id = "models/gemma-4-26b-a4b-it"
 
 TOP_K = 3  # Number of chunks to retrieve (optimized for medical data)
 
 
 def _get_clients():
-    """Lazily initialize external clients on first call."""
-    global _pc, _index, _client, _embed_model
+    """Lazily initialize Pinecone client and index on first call."""
+    global _pc, _index
     if _pc is None or _index is None:
-        _pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+        _pc = get_pinecone_client()
         _index = _pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
-    if _client is None:
-        _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    if _embed_model is None:
-        # Using a high-quality local embedding model to avoid Gemini API
-        _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _index, _client, _embed_model
+    return _index, _pc
 
 
 def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
@@ -49,11 +40,10 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     Run a query through the Basic RAG pipeline.
     """
     metrics = PipelineMetrics("Basic-RAG")
-    index, client, embed_model = _get_clients()
+    index, pc = _get_clients()
 
-    # Step 1: Embed query (Local Gemma-friendly embedding)
-    start_embed = time.time()
-    query_embedding = embed_model.encode(query).tolist()
+    # Step 1: Embed query (Pinecone Inference)
+    query_embedding = embed_texts(pc, [query], input_type="query")[0]
     
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)
@@ -133,13 +123,13 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
     Run Basic RAG pipeline and yield SSE events.
     """
     metrics = PipelineMetrics("Basic-RAG")
-    yield {"type": "status", "message": "Retrieving context (Local Embedding)..."}
+    yield {"type": "status", "message": "Retrieving context (Pinecone embedding)..."}
 
-    index, client, embed_model = _get_clients()
+    index, pc = _get_clients()
 
     # Step 1: Embed query
     start = time.time()
-    query_embedding = embed_model.encode(query).tolist()
+    query_embedding = embed_texts(pc, [query], input_type="query")[0]
 
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)

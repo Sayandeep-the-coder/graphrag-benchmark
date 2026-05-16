@@ -1,35 +1,33 @@
 import argparse
 import glob
 import os
-import torch
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from dotenv import load_dotenv
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from pinecone import Pinecone
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
-from utils.retry import with_retry
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from utils.embeddings import get_pinecone_client, embed_texts
 
 load_dotenv()
 
 # --- Configuration ---
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark")
 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 100
 BATCH_SIZE = 100
-# Using a local embedding model to avoid Gemini
-EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
 # --- Clients ---
-pc = Pinecone(api_key=PINECONE_API_KEY)
+pc = get_pinecone_client()
 index = pc.Index(PINECONE_INDEX_NAME)
-embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
 
 
 def ingest_documents(input_path: str, namespace: str = "medical-rag"):
     """
-    Ingest text from input_path into Pinecone using local embeddings.
+    Ingest text from input_path into Pinecone using Pinecone Inference embeddings.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -53,8 +51,7 @@ def ingest_documents(input_path: str, namespace: str = "medical-rag"):
     for i in tqdm(range(0, len(all_chunks), BATCH_SIZE), desc="Ingesting to Pinecone"):
         batch_chunks = all_chunks[i : i + BATCH_SIZE]
         
-        # Local embedding generation
-        embeddings = embed_model.encode(batch_chunks).tolist()
+        embeddings = embed_texts(pc, batch_chunks, input_type="passage")
         
         vectors = []
         for j, (chunk, emb) in enumerate(zip(batch_chunks, embeddings)):

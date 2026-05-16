@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+env
+.env
+.git
+.gitignore
+results/
+dashboard/frontend/node_modules
+dashboard/frontend/dist
+.ipynb_checkpoints
+*.log

@@ -7,7 +7,7 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark")
-TARGET_DIMENSION = 384
+TARGET_DIMENSION = int(os.getenv("PINECONE_EMBEDDING_DIMENSION", "1024"))
 
 def recreate_index():
     pc = Pinecone(api_key=PINECONE_API_KEY)

@@ -1,8 +1,8 @@
 """
 Pipeline 1 — LLM Only
 
-Sends the query directly to Gemma 3 2B with no retrieval context.
-Serves as the worst-case token baseline (high hallucination risk).
+Sends the query directly to gemini-2.5-flash with no retrieval context.
+Serves as the lowest-context baseline (high hallucination risk on medical facts).
 """
 
 import os

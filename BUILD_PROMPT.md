@@ -1,7 +1,9 @@
 # BUILD_PROMPT.md
 ## Master AI Build Prompt — GraphRAG Inference Benchmark
 
-Use this prompt with any AI coding assistant (Cursor, GitHub Copilot, Claude) to build the full application from scratch. Feed the MD files as context alongside this prompt.
+> **Note:** This file is the original greenfield build spec for the hackathon Wikipedia benchmark. The **implemented repo** uses the **medical dataset** and the models in [README.md](README.md) / [PIPELINES.md](PIPELINES.md) (`gemini-2.5-flash`, `gemma-4-26b-a4b-it`, `embedding-001`). Prefer those docs over the stack list below when extending the codebase.
+
+Use this prompt with any AI coding assistant to scaffold a similar project. Attach the current `PRD.md`, `ARCHITECTURE.md`, `SETUP.md`, `PIPELINES.md`, and `EVALUATION.md` for up-to-date behavior.
 
 ---
 

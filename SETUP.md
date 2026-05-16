@@ -1,241 +1,176 @@
 # Setup Guide
 
-Complete installation walkthrough from zero to running dashboard.
+Installation from zero to a running medical benchmark dashboard.
 
 ---
 
 ## Prerequisites
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Python | 3.11+ | python.org |
-| Docker | 24+ | docker.com |
-| Docker Compose | 2.x | included with Docker Desktop |
-| Node.js | 18+ | nodejs.org |
-| Git | any | git-scm.com |
+| Tool | Version | Notes |
+|------|---------|--------|
+| Python | 3.11+ | Backend + pipelines |
+| Node.js | 18+ | Frontend |
+| Docker + Compose | 24+ / 2.x | GraphRAG service (recommended) |
+| Git | any | Clone repo |
 
 ---
 
-## Step 1 — Accounts & API Keys
+## Step 1 — API keys and accounts
 
-### Google Gemini (free)
-1. Go to [aistudio.google.com](https://aistudio.google.com)
-2. Create API key
-3. Free tier: 15 req/min, 1M tokens/day — enough for hackathon
+### Google Gemini
 
-### Pinecone (free)
-1. Go to [pinecone.io](https://pinecone.io) → Sign up free
-2. Dashboard → API Keys → copy your key
-3. Create index:
-   - Name: `graphrag-benchmark`
-   - Dimensions: `3072` (for Gemini `models/gemini-embedding-001`)
-   - Metric: `cosine`
-   - Plan: Serverless (free)
-   - Region: `us-east-1`
+1. [aistudio.google.com](https://aistudio.google.com) → API key → `GEMINI_API_KEY`
 
-### TigerGraph Savanna (free ~$60 credits)
-1. Go to [tgcloud.io](https://tgcloud.io) → Sign up
-2. Create new cluster → note host URL, username, password
-3. Credits auto-applied — more available on request
+Used for: P1 (`gemini-2.5-flash`), P2 (`gemma-4-26b-a4b-it`, `embedding-001`), GraphRAG container LLM config.
 
-### HuggingFace (free — for accuracy eval)
-1. Go to [huggingface.co](https://huggingface.co) → Sign up
-2. Settings → Access Tokens → New token (read)
+### Pinecone
 
-### Kaggle (for dataset download)
-1. Go to [kaggle.com](https://kaggle.com) → Account → API → Download `kaggle.json`
-2. Place at `~/.kaggle/kaggle.json`
+1. [pinecone.io](https://pinecone.io) → API key
+2. Create a **serverless** index:
+   - Name: `graphrag-benchmark` (or set `PINECONE_INDEX_NAME`)
+   - **Dimensions: 768** (for `models/embedding-001`)
+   - Metric: cosine
+   - Region: e.g. `us-east-1`
 
----
-
-## Step 2 — Clone Repos
+Or run:
 
 ```bash
-# Main project
-git clone https://github.com/YOUR_USERNAME/graphrag-benchmark.git
-cd graphrag-benchmark
-
-# TigerGraph GraphRAG service (goes inside project)
-git clone https://github.com/tigergraph/graphrag.git
+python scripts/create_pinecone_index.py
 ```
 
+### TigerGraph Savanna
+
+See **[TIGERGRAPH_CLOUD_SETUP.md](TIGERGRAPH_CLOUD_SETUP.md)** for the full manual (workspace, database user, roles, `.env`, config generation, Docker, and verification).
+
+Summary: [tgcloud.io](https://tgcloud.io) → workspace **Connect** URL → database user with schema-write role → set `TG_*` in `.env` → `python scripts/generate_server_config.py` → `python scripts/test_tigergraph_connection.py`
+
+### HuggingFace (accuracy evaluation)
+
+1. [huggingface.co](https://huggingface.co) → read token → `HF_TOKEN`
+
 ---
 
-## Step 3 — Environment Variables
+## Step 2 — Clone and configure
 
 ```bash
+git clone https://github.com/YOUR_USERNAME/graphrag-benchmark.git
+cd graphrag-benchmark
 cp .env.example .env
 ```
 
 Edit `.env`:
 
 ```env
-# LLM
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Pinecone
-PINECONE_API_KEY=your_pinecone_api_key_here
+GEMINI_API_KEY=...
+PINECONE_API_KEY=...
 PINECONE_INDEX_NAME=graphrag-benchmark
-PINECONE_ENVIRONMENT=us-east-1
-
-# TigerGraph
 TG_HOST=https://your-instance.tgcloud.io
 TG_USERNAME=tigergraph
-TG_PASSWORD=your_password_here
+TG_PASSWORD=...
 TG_GRAPH_NAME=GraphRAG
-
-# TigerGraph GraphRAG Service (Docker)
+TG_GET_TOKEN=true
 GRAPHRAG_SERVICE_URL=http://localhost:8000
-
-# HuggingFace (accuracy eval)
-HF_TOKEN=your_huggingface_token_here
-
-# App
+HF_TOKEN=...
 PORT=8080
 ```
 
 ---
 
-## Step 4 — Python Dependencies
+## Step 3 — Python environment
 
 ```bash
 python -m venv venv
-source venv/bin/activate       # Windows: venv\Scripts\activate
-
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`requirements.txt`:
+---
+
+## Step 4 — Medical dataset
+
+Place medical CSVs under `data/medical/` (if not already present), then:
+
+```bash
+python scripts/prepare_medical_data.py
 ```
-fastapi==0.111.0
-uvicorn==0.30.1
-pinecone-client==3.2.2
-sentence-transformers==2.7.0
-langchain==0.2.6
-langchain-community==0.2.6
-tiktoken==0.7.0
-bert-score==0.3.13
-google-generativeai==0.5.4
-python-dotenv==1.0.1
-requests==2.32.3
-httpx==0.27.0
-pandas==2.2.2
-tqdm==4.66.4
+
+Output: `data/medical/knowledge_base.txt`
+
+Verify size:
+
+```bash
+python scripts/count_tokens.py --path data/medical/knowledge_base.txt
 ```
 
 ---
 
-## Step 5 — Dataset Setup
+## Step 5 — GraphRAG service
+
+**Option A — Docker Compose (recommended)**
+
+From project root:
 
 ```bash
-# Download Wikipedia dataset
-kaggle datasets download jkkphys/english-wikipedia-articles-20170820-sqlite
-unzip english-wikipedia-articles-20170820-sqlite.zip -d ./data/raw/
-
-# Extract text articles to ./data/wikipedia/
-python scripts/extract_wikipedia.py
-
-# Verify token count
-python scripts/count_tokens.py
-# Should print: Total tokens: 2,300,000+
-```
-
-`scripts/extract_wikipedia.py`:
-```python
-import sqlite3, os
-
-conn = sqlite3.connect("./data/raw/articles.db")
-cursor = conn.cursor()
-cursor.execute("SELECT title, text FROM articles LIMIT 5000")  # ~2M tokens
-
-os.makedirs("./data/wikipedia", exist_ok=True)
-
-for i, (title, text) in enumerate(cursor.fetchall()):
-    filename = f"./data/wikipedia/article_{i:05d}.txt"
-    with open(filename, "w") as f:
-        f.write(f"# {title}\n\n{text}")
-
-conn.close()
-print(f"Extracted {i+1} articles")
-```
-
----
-
-## Step 6 — Start TigerGraph GraphRAG Service
-
-```bash
-cd graphrag
-
-# Configure GraphRAG service
-cp .env.example .env
-# Add your GEMINI_API_KEY, TG_HOST, TG_USERNAME, TG_PASSWORD
-
-docker-compose up -d
-
-# Verify running
+python scripts/generate_server_config.py
+python scripts/test_tigergraph_connection.py
+docker compose up -d graphrag
 curl http://localhost:8000/health
-# {"status": "ok"}
 ```
+
+**Option B — Standalone GraphRAG repo**
+
+Clone [tigergraph/graphrag](https://github.com/tigergraph/graphrag), configure `.env` with Gemini + TigerGraph credentials, and run its compose stack. Set `GRAPHRAG_SERVICE_URL` accordingly.
 
 ---
 
-## Step 7 — Ingest Data
+## Step 6 — Ingest
 
 ```bash
-# Pipeline 2: chunk + embed + push to Pinecone
-# Estimated time: 15-30 min for 2M tokens
-python pipelines/pipeline2_basic_rag/ingest.py
-
-# Pipeline 3: push to TigerGraph GraphRAG
-# Estimated time: 30-60 min for 2M tokens (entity extraction happening)
-python pipelines/pipeline3_graphrag/ingest.py
+python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace medical-rag
+python pipelines/pipeline3_graphrag/ingest.py --path ./data/medical
 ```
 
-Watch progress:
-```
-[Pipeline 2] Chunking... 5000 articles → 45,231 chunks
-[Pipeline 2] Embedding batch 1/453...
-[Pipeline 2] Pushing to Pinecone... Done. 45,231 vectors stored.
-
-[Pipeline 3] Ingesting article 1/5000...
-[Pipeline 3] Entities extracted: 12,483 | Relationships: 34,217
-[Pipeline 3] Knowledge graph built. Ready.
-```
+Expect minutes, not hours, for the medical KB (vs. multi-million-token Wikipedia runs).
 
 ---
 
-## Step 8 — Launch Dashboard
+## Step 7 — Dashboard
 
 ```bash
-# Terminal 1: Backend
+# Terminal 1
 uvicorn dashboard.backend.main:app --host 0.0.0.0 --port 8080 --reload
 
-# Terminal 2: Frontend
-cd dashboard/frontend
-npm install
-npm run dev
+# Terminal 2
+cd dashboard/frontend && npm install && npm run dev
 ```
 
-Open `http://localhost:3000`
+Open `http://localhost:3000`.
+
+**All-in-one:**
+
+```bash
+docker compose up
+```
 
 ---
 
-## Verify Everything Works
+## Verify
 
 ```bash
 python scripts/smoke_test.py
 ```
 
-Expected output:
-```
-✅ Gemini API: connected
-✅ Pinecone: 45,231 vectors in index
-✅ TigerGraph GraphRAG service: healthy
-✅ Pipeline 1: answered in 1.2s
-✅ Pipeline 2: answered in 4.8s (5 chunks retrieved)
-✅ Pipeline 3: answered in 3.1s (multi-hop traversal: 2 hops)
-✅ All systems go.
-```
+---
+
+## Optional — Wikipedia dataset (legacy)
+
+For the original hackathon Wikipedia benchmark:
+
+1. Kaggle API + `scripts/extract_wikipedia.py` → `data/wikipedia/`
+2. Ingest with `--path ./data/wikipedia` and namespace `wikipedia-2025` (if you maintain a separate Pinecone namespace)
+
+The default medical dashboard uses `data/medical` and namespace `medical-rag`.
 
 ---
 
@@ -243,9 +178,11 @@ Expected output:
 
 | Issue | Fix |
 |-------|-----|
-| `Pinecone index not found` | Create index with correct dimensions (384) |
-| `TigerGraph 401 Unauthorized` | Check TG_USERNAME and TG_PASSWORD in .env |
-| `Gemini 429 Too Many Requests` | Exponential backoff already in `utils/retry.py` |
-| `GraphRAG service 503` | `docker-compose logs graphrag` to debug |
-| `BERTScore CUDA error` | Add `device="cpu"` to bert_score call |
-| `Ingest very slow` | Reduce batch to 100 articles, re-run |
+| Pinecone dimension mismatch | Recreate index at **768** for `embedding-001`: `python scripts/recreate_pinecone_index.py` |
+| `embedding-001` / model 404 | Confirm model IDs in [Google AI models](https://ai.google.dev/gemini-api/docs/models); API key has access |
+| TigerGraph 401 / REST-10016 | See [TIGERGRAPH_CLOUD_SETUP.md](TIGERGRAPH_CLOUD_SETUP.md); set `TG_GET_TOKEN=true`, regenerate config, verify with `test_tigergraph_connection.py` |
+| TigerGraph permission denied | Grant DB user **globaldesigner** or **superuser** in Savanna, then `docker compose restart graphrag` |
+| GraphRAG connection error in UI | `docker compose logs graphrag`; ensure `GRAPHRAG_SERVICE_URL` reachable from backend |
+| Gemma 500 on P2 | REST path is already used; reduce `top_k` or chunk size |
+| BERTScore CUDA error | Eval uses `device="cpu"` in `bertscore_eval.py` |
+| Empty P2 answers | Re-run ingest; confirm namespace `medical-rag` matches dashboard |

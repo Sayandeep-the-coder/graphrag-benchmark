@@ -1,6 +1,8 @@
 """
 Extract Wikipedia articles from Kaggle SQLite database to individual .txt files.
 
+Legacy optional dataset for the original hackathon benchmark (default app uses data/medical).
+
 Usage: python scripts/extract_wikipedia.py
 
 Expects SQLite DB at ./data/raw/articles.db
