@@ -6,6 +6,7 @@ services:
     env_file: .env
     environment:
       SERVER_CONFIG: /code/configs/server_config.json
+      TG_GSQL_PORT: "443"
     volumes:
       - ./configs:/code/configs:ro
       - ./data:/code/data:ro
@@ -28,6 +29,7 @@ services:
       - graphrag
     volumes:
       - ./results:/app/results
+      - ./data:/app/data:ro
     networks:
       - app-network
     restart: unless-stopped

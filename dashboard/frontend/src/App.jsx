@@ -28,6 +28,7 @@ import MetricsTable from "./components/MetricsTable";
 import TokenChart from "./components/TokenChart";
 import SystemConsole from "./components/SystemConsole";
 import KnowledgeGraph from "./components/KnowledgeGraph";
+import ImplementationStatus from "./components/ImplementationStatus";
 
 const API_URL = "http://localhost:8080";
 
@@ -40,9 +41,11 @@ export default function App() {
   const [error, setError] = useState(null);
   const [kbContent, setKbContent] = useState("");
   const [kbTokens, setKbTokens] = useState(0);
+  const [kbMeta, setKbMeta] = useState(null);
   const [kbLoading, setKbLoading] = useState(true);
   const [events, setEvents] = useState([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [implementationStatus, setImplementationStatus] = useState(null);
 
   const clearBenchmark = () => {
     setQuery("");
@@ -65,14 +68,26 @@ export default function App() {
       .then((data) => {
         setKbContent(data.content || "No content found.");
         setKbTokens(data.total_tokens || 0);
-        addEvent("Knowledge base synchronized successfully.", "success");
+        setKbMeta(data);
+        addEvent(`Knowledge base loaded from ${data.source_path || data.status || "unknown source"}.`, "success");
       })
       .catch((err) => {
         setKbContent(`Error loading knowledge base: ${err.message}`);
         setKbTokens(0);
+        setKbMeta(null);
         addEvent(`Failed to synchronize knowledge base: ${err.message}`, "warning");
       })
       .finally(() => setKbLoading(false));
+
+    fetch(`${API_URL}/implementation/status`)
+      .then((res) => res.json())
+      .then((data) => {
+        setImplementationStatus(data);
+        addEvent(`Implementation map loaded: ${data.benchmark?.total_questions || 0} benchmark questions.`, "success");
+      })
+      .catch((err) => {
+        addEvent(`Implementation map unavailable: ${err.message}`, "warning");
+      });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -95,7 +110,12 @@ export default function App() {
       const response = await fetch(`${API_URL}/compare/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, top_k: 3, namespace: "medical-rag" }),
+        body: JSON.stringify({
+          query,
+          top_k: 3,
+          namespace: "medical-rag",
+          ground_truth: showGroundTruth ? groundTruth : null,
+        }),
       });
 
       if (!response.ok) {
@@ -119,6 +139,12 @@ export default function App() {
             try {
               const data = JSON.parse(line.substring(6));
               const { pipeline, type, message, text, tokens, answer } = data;
+
+              if (type === "accuracy") {
+                setResults((prev) => prev ? { ...prev, accuracy: data.accuracy } : prev);
+                addEvent("Accuracy evaluation completed.", "success");
+                continue;
+              }
 
               setResults((prev) => {
                 if (!prev || !prev[pipeline]) return prev;
@@ -231,9 +257,11 @@ export default function App() {
                       <Database className="w-4 h-4 text-accent-info" />
                    </div>
                    <div className="flex flex-col">
-                      <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">Vector_Engine</span>
-                      <span className="text-[10px] text-accent-info font-mono uppercase">Pinecone_DB</span>
-                   </div>
+                    <h1 className="text-lg font-black text-white tracking-tighter uppercase italic leading-none">
+                      GraphRAG_Inference_Core_v2
+                    </h1>
+                    <span className="text-[10px] text-accent-neon font-bold tracking-[0.2em] uppercase mt-1">Stabilized_Production_Build</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                    <div className="w-8 h-8 rounded bg-accent-warning/10 flex items-center justify-center border border-accent-warning/20">
@@ -272,6 +300,8 @@ export default function App() {
                 transition={{ duration: 0.3 }}
                 className="p-8 max-w-[1400px] mx-auto w-full space-y-8"
               >
+                <ImplementationStatus status={implementationStatus} />
+
                 {/* Query Selection Area */}
                 <section className="card-premium p-8 relative overflow-hidden group">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent-neon/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -295,7 +325,11 @@ export default function App() {
 
                   {/* Sample Queries */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {["What are the symptoms of chronic metabolic syndrome?", "Summarize clinical trials for drug interaction G-942", "Map entity relationships for patient case #882"].map((tag) => (
+                    {[
+                      "Patient is taking warfarin, fluconazole, and aspirin. Trace the full interaction cascade.",
+                      "Which guidelines conflict on aspirin use in elderly patients?",
+                      "If omeprazole is stopped, which drug interaction paths resolve?"
+                    ].map((tag) => (
                       <button
                         key={tag}
                         onClick={() => setQuery(tag)}
@@ -383,6 +417,38 @@ export default function App() {
                 {/* Results Section */}
                 {results && (
                   <div className="space-y-8">
+                    <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="metric-box bg-black/30 border-accent-neon/20">
+                        <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Detected_Category</p>
+                        <p className="text-sm font-black font-mono text-accent-neon uppercase">
+                          {results.graphrag?.query_category || "Pending"}
+                        </p>
+                      </div>
+                      <div className="metric-box bg-black/30 border-accent-info/20">
+                        <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Graph_Retriever</p>
+                        <p className="text-sm font-black font-mono text-accent-info uppercase">
+                          {results.graphrag?.retriever || "Pending"}
+                        </p>
+                      </div>
+                      <div className="metric-box bg-black/30 border-white/10">
+                        <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Hop_Depth</p>
+                        <p className="text-sm font-black font-mono text-white">
+                          {results.graphrag?.hop_depth || "-"}
+                        </p>
+                      </div>
+                      <div className="metric-box bg-black/30 border-accent-warning/20">
+                        <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Token_Reduction</p>
+                        <p className="text-sm font-black font-mono text-accent-warning">
+                          {(() => {
+                            const rag = results.basic_rag.metrics?.total_tokens || 0;
+                            const graph = results.graphrag?.metrics?.total_tokens || 0;
+                            if (!rag || !graph) return "Pending";
+                            return `${(((rag - graph) / rag) * 100).toFixed(1)}%`;
+                          })()}
+                        </p>
+                      </div>
+                    </section>
+
                     {/* Token Chart */}
                     <div className="card-premium p-8">
                        <div className="flex items-center gap-3 mb-8">
@@ -493,9 +559,27 @@ export default function App() {
                           <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
                             <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Index_Status</p>
                             <div className="flex items-center gap-2">
-                               <div className="w-1 h-1 rounded-full bg-accent-info animate-pulse"></div>
-                               <p className="text-[10px] font-mono text-accent-info uppercase tracking-widest">Synchronized</p>
+                               <div className={`w-1 h-1 rounded-full animate-pulse ${
+                                 kbMeta?.status?.startsWith("dynamic") ? "bg-accent-neon" : "bg-accent-warning"
+                               }`}></div>
+                               <p className={`text-[10px] font-mono uppercase tracking-widest ${
+                                 kbMeta?.status?.startsWith("dynamic") ? "text-accent-neon" : "text-accent-warning"
+                               }`}>
+                                 {kbLoading ? "Loading" : (kbMeta?.status || "Unknown").replaceAll("_", " ")}
+                               </p>
                             </div>
+                          </div>
+                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Documents</p>
+                            <p className="text-sm font-mono text-accent-info">
+                              {kbLoading ? "..." : (kbMeta?.documents || 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Source_File</p>
+                            <p className="text-[10px] font-mono text-gray-300 truncate" title={kbMeta?.source_path || ""}>
+                              {kbLoading ? "..." : (kbMeta?.source_path || "missing")}
+                            </p>
                           </div>
                         </div>
 
@@ -506,8 +590,20 @@ export default function App() {
                               Technical_Architecture
                            </p>
                            <p className="text-[11px] text-gray-400 leading-relaxed font-medium">
-                             Index shards distributed across <span className="text-accent-info">Pinecone_GCP_West</span> with secondary traversal optimization via <span className="text-accent-warning">TigerGraph_ML</span>.
+                             {kbMeta?.architecture || "Knowledge base metadata is loading from the backend."}
                            </p>
+                           {kbMeta?.source_counts && (
+                             <div className="mt-4 flex flex-wrap gap-2">
+                               {Object.entries(kbMeta.source_counts).map(([source, count]) => (
+                                 <span
+                                   key={source}
+                                   className="px-2 py-1 rounded bg-black/30 border border-white/5 text-[8px] font-mono text-gray-400 uppercase tracking-widest"
+                                 >
+                                   {source}: {count}
+                                 </span>
+                               ))}
+                             </div>
+                           )}
                         </div>
                       </div>
 

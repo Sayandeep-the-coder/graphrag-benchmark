@@ -36,6 +36,10 @@ export default function PipelineCard({ name, data, accentColor, accuracy }) {
   const accent = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.green;
   const m = data.metrics || {};
   const isComplete = data.status === "Complete" || (m.total_tokens > 0 && !data.status);
+  const signals = data.clinical_signals || {};
+  const warnings = signals.warnings || [];
+  const paths = signals.paths || [];
+  const isGraphRag = name.toUpperCase().includes("GRAPHRAG");
 
   return (
     <div className={`card ${accent.border} ${accent.glow} shadow-lg flex flex-col relative overflow-hidden group`}>
@@ -57,7 +61,7 @@ export default function PipelineCard({ name, data, accentColor, accuracy }) {
         </div>
         <div className="flex items-center gap-2">
            <span className="text-[10px] font-mono text-gray-500 bg-surface-900 px-2 py-0.5 rounded border border-white/5 uppercase">
-             {name.includes("GraphRAG") ? "gpt-4o + graph" : name.includes("Basic") ? "gpt-4o + vector" : "gpt-4o"}
+             {isGraphRag ? "Gemma + Graph" : name.includes("RAG") ? "Gemma + Vector" : "Gemma"}
            </span>
         </div>
       </div>
@@ -135,12 +139,63 @@ export default function PipelineCard({ name, data, accentColor, accuracy }) {
       </div>
 
       {/* Reasoning Traversal Path (Technical Node List) */}
-      {name.includes("GraphRAG") && (
+      {isGraphRag && (
         <div className="mb-8 border-t border-white/5 pt-6">
            <div className="flex items-center justify-between mb-4">
               <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Reasoning_Path</p>
-              <span className="text-[8px] text-accent-neon font-mono uppercase tracking-widest animate-pulse">Live_Compute</span>
+              <span className="text-[8px] text-accent-neon font-mono uppercase tracking-widest animate-pulse">
+                {data.query_category || "Live_Compute"}
+              </span>
            </div>
+           {(data.retriever || data.hop_depth) && (
+             <div className="mb-4 grid grid-cols-2 gap-2">
+               <div className="metric-box !py-2 !px-3 bg-black/30">
+                 <p className="text-gray-600 text-[8px] font-black uppercase tracking-widest mb-1">Retriever</p>
+                 <p className="text-accent-neon font-mono text-[10px] uppercase">{data.retriever || "-"}</p>
+               </div>
+               <div className="metric-box !py-2 !px-3 bg-black/30">
+                 <p className="text-gray-600 text-[8px] font-black uppercase tracking-widest mb-1">Hop_Depth</p>
+                 <p className="text-accent-info font-mono text-[10px] uppercase">{data.hop_depth || "-"}</p>
+               </div>
+             </div>
+           )}
+           {warnings.length > 0 && (
+             <div className="mb-4 rounded-xl border border-accent-warning/30 bg-accent-warning/10 p-4">
+               <div className="flex items-center justify-between mb-2">
+                 <p className="text-[9px] text-accent-warning font-black uppercase tracking-widest">Clinical_Warnings</p>
+                 {signals.authority_score && (
+                   <span className="text-[9px] text-accent-neon font-mono">
+                     AUTH {Number(signals.authority_score).toFixed(2)}
+                   </span>
+                 )}
+               </div>
+               <div className="space-y-2">
+                 {warnings.map((warning, idx) => (
+                   <div key={idx} className="text-[11px] font-mono text-gray-300 leading-relaxed">
+                     <span className="text-accent-warning font-black uppercase mr-2">
+                       {warning.severity || "clinical"}
+                     </span>
+                     {warning.drugs?.length > 0 && (
+                       <span className="text-white mr-2">{warning.drugs.join(" + ")}</span>
+                     )}
+                     <span>{warning.mechanism || warning.action}</span>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
+           {paths.length > 0 && (
+             <div className="mb-4 rounded-xl border border-accent-neon/20 bg-accent-neon/5 p-4">
+               <p className="text-[9px] text-accent-neon font-black uppercase tracking-widest mb-2">Graph_Path</p>
+               <div className="space-y-1">
+                 {paths.slice(0, 3).map((path, idx) => (
+                   <p key={idx} className="text-[10px] font-mono text-gray-400 break-words">
+                     {typeof path === "string" ? path : JSON.stringify(path)}
+                   </p>
+                 ))}
+               </div>
+             </div>
+           )}
            <div className="space-y-0 px-2">
               {[
                 { label: "Entity Extraction", status: isComplete ? "done" : "active" },

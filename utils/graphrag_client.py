@@ -110,3 +110,51 @@ def parse_answer(data: dict[str, Any]) -> tuple[str, list]:
     if isinstance(retrieved, dict):
         entities = retrieved.get("entities") or retrieved.get("Entity") or []
     return answer, entities
+
+
+def extract_clinical_signals(data: dict[str, Any], answer: str) -> dict[str, Any]:
+    """Extract dashboard-friendly clinical warning signals from graph output."""
+    interactions = data.get("interactions") or data.get("critical_interactions") or []
+    severe_terms = ("contraindicated", "severe", "fatal", "bleeding", "rhabdomyolysis", "toxicity")
+    warnings = []
+
+    if isinstance(interactions, list):
+        for item in interactions:
+            if not isinstance(item, dict):
+                continue
+            severity = str(item.get("severity", "")).lower()
+            mechanism = item.get("mechanism") or item.get("path") or item.get("interaction_path") or ""
+            drugs = item.get("drugs") or [item.get("drug1") or item.get("from"), item.get("drug2") or item.get("to")]
+            drugs = [d for d in drugs if d]
+            if severity in {"moderate", "severe", "contraindicated", "fatal"} or any(term in mechanism.lower() for term in severe_terms):
+                warnings.append({
+                    "drugs": drugs,
+                    "severity": severity or "clinical",
+                    "mechanism": mechanism,
+                    "action": item.get("clinical_action") or item.get("action") or "Review before co-prescribing",
+                })
+
+    if not warnings and any(term in answer.lower() for term in severe_terms):
+        first_line = next((line.strip() for line in answer.splitlines() if line.strip()), answer[:180])
+        warnings.append({
+            "drugs": [],
+            "severity": "clinical",
+            "mechanism": first_line,
+            "action": "Review highlighted risk",
+        })
+
+    paths = (
+        data.get("paths")
+        or data.get("reasoning_paths")
+        or data.get("enzyme_cascades")
+        or data.get("affected_enzymes")
+        or []
+    )
+    contraindications = data.get("contraindications") or data.get("absolute_contraindications") or []
+
+    return {
+        "warnings": warnings[:5],
+        "paths": paths[:5] if isinstance(paths, list) else [str(paths)],
+        "contraindications": contraindications[:5] if isinstance(contraindications, list) else [str(contraindications)],
+        "authority_score": data.get("authority_score") or data.get("confidence") or None,
+    }

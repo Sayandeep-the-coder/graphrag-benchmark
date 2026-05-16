@@ -1,0 +1,535 @@
+[
+  {
+    "id": "DB00001",
+    "name": "Warfarin",
+    "generic_name": "warfarin",
+    "drug_class": "Anticoagulant",
+    "metabolism_pathway": "CYP2C9,CYP3A4",
+    "half_life_hours": 40.0,
+    "interactions": [
+      "Aspirin",
+      "Fluconazole",
+      "Clarithromycin",
+      "Metronidazole",
+      "Amiodarone"
+    ],
+    "contraindications": [
+      "Active bleeding",
+      "Severe liver disease",
+      "Pregnancy"
+    ],
+    "adverse_events": [
+      "Bleeding",
+      "Bruising",
+      "Hemorrhagic stroke"
+    ],
+    "text": "Warfarin is a Anticoagulant metabolized via CYP2C9,CYP3A4 with a half-life of 40.0 hours. Known drug interactions include: Aspirin, Fluconazole, Clarithromycin, Metronidazole, Amiodarone. Contraindications: Active bleeding, Severe liver disease, Pregnancy. Adverse events: Bleeding, Bruising, Hemorrhagic stroke.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00002",
+    "name": "Aspirin",
+    "generic_name": "aspirin",
+    "drug_class": "NSAID/Antiplatelet",
+    "metabolism_pathway": "CYP2C9",
+    "half_life_hours": 6.0,
+    "interactions": [
+      "Warfarin",
+      "Ibuprofen",
+      "Clopidogrel",
+      "Methotrexate",
+      "ACE Inhibitors"
+    ],
+    "contraindications": [
+      "Peptic ulcer",
+      "Bleeding disorders",
+      "Children with viral infection"
+    ],
+    "adverse_events": [
+      "GI bleeding",
+      "Tinnitus",
+      "Reye syndrome"
+    ],
+    "text": "Aspirin is a NSAID/Antiplatelet metabolized via CYP2C9 with a half-life of 6.0 hours. Known drug interactions include: Warfarin, Ibuprofen, Clopidogrel, Methotrexate, ACE Inhibitors. Contraindications: Peptic ulcer, Bleeding disorders, Children with viral infection. Adverse events: GI bleeding, Tinnitus, Reye syndrome.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00003",
+    "name": "Metformin",
+    "generic_name": "metformin",
+    "drug_class": "Biguanide",
+    "metabolism_pathway": "Renal",
+    "half_life_hours": 6.2,
+    "interactions": [
+      "Alcohol",
+      "Contrast dye",
+      "Cimetidine",
+      "Furosemide"
+    ],
+    "contraindications": [
+      "Renal impairment",
+      "Metabolic acidosis",
+      "Severe liver disease"
+    ],
+    "adverse_events": [
+      "Lactic acidosis",
+      "Diarrhea",
+      "Nausea",
+      "Vitamin B12 deficiency"
+    ],
+    "text": "Metformin is a Biguanide metabolized via Renal with a half-life of 6.2 hours. Known drug interactions include: Alcohol, Contrast dye, Cimetidine, Furosemide. Contraindications: Renal impairment, Metabolic acidosis, Severe liver disease. Adverse events: Lactic acidosis, Diarrhea, Nausea, Vitamin B12 deficiency.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00004",
+    "name": "Simvastatin",
+    "generic_name": "simvastatin",
+    "drug_class": "Statin",
+    "metabolism_pathway": "CYP3A4",
+    "half_life_hours": 3.0,
+    "interactions": [
+      "Clarithromycin",
+      "Itraconazole",
+      "Amiodarone",
+      "Grapefruit juice",
+      "Cyclosporine"
+    ],
+    "contraindications": [
+      "Active liver disease",
+      "Pregnancy",
+      "Breastfeeding"
+    ],
+    "adverse_events": [
+      "Rhabdomyolysis",
+      "Myopathy",
+      "Hepatotoxicity",
+      "Muscle pain"
+    ],
+    "text": "Simvastatin is a Statin metabolized via CYP3A4 with a half-life of 3.0 hours. Known drug interactions include: Clarithromycin, Itraconazole, Amiodarone, Grapefruit juice, Cyclosporine. Contraindications: Active liver disease, Pregnancy, Breastfeeding. Adverse events: Rhabdomyolysis, Myopathy, Hepatotoxicity, Muscle pain.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00005",
+    "name": "Clarithromycin",
+    "generic_name": "clarithromycin",
+    "drug_class": "Macrolide antibiotic",
+    "metabolism_pathway": "CYP3A4",
+    "half_life_hours": 5.0,
+    "interactions": [
+      "Simvastatin",
+      "Warfarin",
+      "Carbamazepine",
+      "Digoxin",
+      "Colchicine"
+    ],
+    "contraindications": [
+      "QT prolongation",
+      "Severe hepatic impairment"
+    ],
+    "adverse_events": [
+      "QT prolongation",
+      "Hepatotoxicity",
+      "C. difficile colitis"
+    ],
+    "text": "Clarithromycin is a Macrolide antibiotic metabolized via CYP3A4 with a half-life of 5.0 hours. Known drug interactions include: Simvastatin, Warfarin, Carbamazepine, Digoxin, Colchicine. Contraindications: QT prolongation, Severe hepatic impairment. Adverse events: QT prolongation, Hepatotoxicity, C. difficile colitis.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00006",
+    "name": "Fluconazole",
+    "generic_name": "fluconazole",
+    "drug_class": "Azole antifungal",
+    "metabolism_pathway": "CYP2C9,CYP3A4",
+    "half_life_hours": 30.0,
+    "interactions": [
+      "Warfarin",
+      "Phenytoin",
+      "Rifampin",
+      "Tacrolimus",
+      "Clopidogrel"
+    ],
+    "contraindications": [
+      "Severe liver disease"
+    ],
+    "adverse_events": [
+      "Hepatotoxicity",
+      "QT prolongation",
+      "Stevens-Johnson syndrome"
+    ],
+    "text": "Fluconazole is a Azole antifungal metabolized via CYP2C9,CYP3A4 with a half-life of 30.0 hours. Known drug interactions include: Warfarin, Phenytoin, Rifampin, Tacrolimus, Clopidogrel. Contraindications: Severe liver disease. Adverse events: Hepatotoxicity, QT prolongation, Stevens-Johnson syndrome.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00007",
+    "name": "Amiodarone",
+    "generic_name": "amiodarone",
+    "drug_class": "Antiarrhythmic",
+    "metabolism_pathway": "CYP3A4,CYP2C8",
+    "half_life_hours": 1200.0,
+    "interactions": [
+      "Warfarin",
+      "Simvastatin",
+      "Digoxin",
+      "Phenytoin",
+      "Cyclosporine"
+    ],
+    "contraindications": [
+      "Severe sinus node disease",
+      "Second/third degree heart block"
+    ],
+    "adverse_events": [
+      "Pulmonary toxicity",
+      "Thyroid dysfunction",
+      "Hepatotoxicity",
+      "Corneal deposits"
+    ],
+    "text": "Amiodarone is a Antiarrhythmic metabolized via CYP3A4,CYP2C8 with a half-life of 1200.0 hours. Known drug interactions include: Warfarin, Simvastatin, Digoxin, Phenytoin, Cyclosporine. Contraindications: Severe sinus node disease, Second/third degree heart block. Adverse events: Pulmonary toxicity, Thyroid dysfunction, Hepatotoxicity, Corneal deposits.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00008",
+    "name": "Metoprolol",
+    "generic_name": "metoprolol",
+    "drug_class": "Beta blocker",
+    "metabolism_pathway": "CYP2D6",
+    "half_life_hours": 5.0,
+    "interactions": [
+      "Verapamil",
+      "Clonidine",
+      "Fluoxetine",
+      "Paroxetine",
+      "Rifampin"
+    ],
+    "contraindications": [
+      "Severe bradycardia",
+      "Decompensated heart failure",
+      "Cardiogenic shock"
+    ],
+    "adverse_events": [
+      "Bradycardia",
+      "Hypotension",
+      "Fatigue",
+      "Depression"
+    ],
+    "text": "Metoprolol is a Beta blocker metabolized via CYP2D6 with a half-life of 5.0 hours. Known drug interactions include: Verapamil, Clonidine, Fluoxetine, Paroxetine, Rifampin. Contraindications: Severe bradycardia, Decompensated heart failure, Cardiogenic shock. Adverse events: Bradycardia, Hypotension, Fatigue, Depression.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00009",
+    "name": "Lisinopril",
+    "generic_name": "lisinopril",
+    "drug_class": "ACE inhibitor",
+    "metabolism_pathway": "Renal",
+    "half_life_hours": 12.0,
+    "interactions": [
+      "Potassium supplements",
+      "Spironolactone",
+      "NSAIDs",
+      "Lithium"
+    ],
+    "contraindications": [
+      "Pregnancy",
+      "Angioedema history",
+      "Bilateral renal artery stenosis"
+    ],
+    "adverse_events": [
+      "Angioedema",
+      "Hyperkalemia",
+      "Dry cough",
+      "Renal impairment"
+    ],
+    "text": "Lisinopril is a ACE inhibitor metabolized via Renal with a half-life of 12.0 hours. Known drug interactions include: Potassium supplements, Spironolactone, NSAIDs, Lithium. Contraindications: Pregnancy, Angioedema history, Bilateral renal artery stenosis. Adverse events: Angioedema, Hyperkalemia, Dry cough, Renal impairment.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00010",
+    "name": "Omeprazole",
+    "generic_name": "omeprazole",
+    "drug_class": "Proton pump inhibitor",
+    "metabolism_pathway": "CYP2C19,CYP3A4",
+    "half_life_hours": 1.0,
+    "interactions": [
+      "Clopidogrel",
+      "Methotrexate",
+      "Tacrolimus",
+      "Digoxin"
+    ],
+    "contraindications": [
+      "Hypersensitivity to PPIs"
+    ],
+    "adverse_events": [
+      "C. difficile infection",
+      "Hypomagnesemia",
+      "Bone fractures",
+      "Vitamin B12 deficiency"
+    ],
+    "text": "Omeprazole is a Proton pump inhibitor metabolized via CYP2C19,CYP3A4 with a half-life of 1.0 hours. Known drug interactions include: Clopidogrel, Methotrexate, Tacrolimus, Digoxin. Contraindications: Hypersensitivity to PPIs. Adverse events: C. difficile infection, Hypomagnesemia, Bone fractures, Vitamin B12 deficiency.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00011",
+    "name": "Clopidogrel",
+    "generic_name": "clopidogrel",
+    "drug_class": "Antiplatelet",
+    "metabolism_pathway": "CYP2C19",
+    "half_life_hours": 6.0,
+    "interactions": [
+      "Omeprazole",
+      "Aspirin",
+      "Warfarin",
+      "Fluconazole",
+      "NSAIDs"
+    ],
+    "contraindications": [
+      "Active bleeding",
+      "Severe liver disease"
+    ],
+    "adverse_events": [
+      "Bleeding",
+      "TTP",
+      "Neutropenia"
+    ],
+    "text": "Clopidogrel is a Antiplatelet metabolized via CYP2C19 with a half-life of 6.0 hours. Known drug interactions include: Omeprazole, Aspirin, Warfarin, Fluconazole, NSAIDs. Contraindications: Active bleeding, Severe liver disease. Adverse events: Bleeding, TTP, Neutropenia.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00012",
+    "name": "Digoxin",
+    "generic_name": "digoxin",
+    "drug_class": "Cardiac glycoside",
+    "metabolism_pathway": "P-glycoprotein",
+    "half_life_hours": 39.0,
+    "interactions": [
+      "Amiodarone",
+      "Verapamil",
+      "Clarithromycin",
+      "Quinidine"
+    ],
+    "contraindications": [
+      "Ventricular fibrillation",
+      "Hypokalemia"
+    ],
+    "adverse_events": [
+      "Digitalis toxicity",
+      "Arrhythmias",
+      "Visual disturbances",
+      "Nausea"
+    ],
+    "text": "Digoxin is a Cardiac glycoside metabolized via P-glycoprotein with a half-life of 39.0 hours. Known drug interactions include: Amiodarone, Verapamil, Clarithromycin, Quinidine. Contraindications: Ventricular fibrillation, Hypokalemia. Adverse events: Digitalis toxicity, Arrhythmias, Visual disturbances, Nausea.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00013",
+    "name": "Phenytoin",
+    "generic_name": "phenytoin",
+    "drug_class": "Anticonvulsant",
+    "metabolism_pathway": "CYP2C9,CYP2C19",
+    "half_life_hours": 22.0,
+    "interactions": [
+      "Fluconazole",
+      "Amiodarone",
+      "Carbamazepine",
+      "Valproic acid"
+    ],
+    "contraindications": [
+      "Sinus bradycardia",
+      "SA block",
+      "Adams-Stokes syndrome"
+    ],
+    "adverse_events": [
+      "Gingival hyperplasia",
+      "Nystagmus",
+      "Ataxia",
+      "SJS/TEN"
+    ],
+    "text": "Phenytoin is a Anticonvulsant metabolized via CYP2C9,CYP2C19 with a half-life of 22.0 hours. Known drug interactions include: Fluconazole, Amiodarone, Carbamazepine, Valproic acid. Contraindications: Sinus bradycardia, SA block, Adams-Stokes syndrome. Adverse events: Gingival hyperplasia, Nystagmus, Ataxia, SJS/TEN.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00014",
+    "name": "Methotrexate",
+    "generic_name": "methotrexate",
+    "drug_class": "Antimetabolite",
+    "metabolism_pathway": "Renal",
+    "half_life_hours": 8.0,
+    "interactions": [
+      "NSAIDs",
+      "Trimethoprim",
+      "Omeprazole",
+      "Penicillins"
+    ],
+    "contraindications": [
+      "Pregnancy",
+      "Severe renal impairment",
+      "Severe hepatic impairment"
+    ],
+    "adverse_events": [
+      "Myelosuppression",
+      "Hepatotoxicity",
+      "Pneumonitis",
+      "Mucositis"
+    ],
+    "text": "Methotrexate is a Antimetabolite metabolized via Renal with a half-life of 8.0 hours. Known drug interactions include: NSAIDs, Trimethoprim, Omeprazole, Penicillins. Contraindications: Pregnancy, Severe renal impairment, Severe hepatic impairment. Adverse events: Myelosuppression, Hepatotoxicity, Pneumonitis, Mucositis.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00015",
+    "name": "Fluoxetine",
+    "generic_name": "fluoxetine",
+    "drug_class": "SSRI",
+    "metabolism_pathway": "CYP2D6",
+    "half_life_hours": 72.0,
+    "interactions": [
+      "MAOIs",
+      "Tramadol",
+      "Metoprolol",
+      "Tamoxifen",
+      "Linezolid"
+    ],
+    "contraindications": [
+      "MAOIs within 14 days",
+      "Pimozide use"
+    ],
+    "adverse_events": [
+      "Serotonin syndrome",
+      "Suicidal ideation",
+      "QT prolongation",
+      "Hyponatremia"
+    ],
+    "text": "Fluoxetine is a SSRI metabolized via CYP2D6 with a half-life of 72.0 hours. Known drug interactions include: MAOIs, Tramadol, Metoprolol, Tamoxifen, Linezolid. Contraindications: MAOIs within 14 days, Pimozide use. Adverse events: Serotonin syndrome, Suicidal ideation, QT prolongation, Hyponatremia.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00016",
+    "name": "Ibuprofen",
+    "generic_name": "ibuprofen",
+    "drug_class": "NSAID",
+    "metabolism_pathway": "CYP2C9",
+    "half_life_hours": 2.0,
+    "interactions": [
+      "Aspirin",
+      "Warfarin",
+      "Lithium",
+      "Methotrexate",
+      "ACE inhibitors"
+    ],
+    "contraindications": [
+      "Active GI bleeding",
+      "Severe renal impairment",
+      "Coronary bypass surgery"
+    ],
+    "adverse_events": [
+      "GI ulceration",
+      "Renal toxicity",
+      "Cardiovascular events"
+    ],
+    "text": "Ibuprofen is a NSAID metabolized via CYP2C9 with a half-life of 2.0 hours. Known drug interactions include: Aspirin, Warfarin, Lithium, Methotrexate, ACE inhibitors. Contraindications: Active GI bleeding, Severe renal impairment, Coronary bypass surgery. Adverse events: GI ulceration, Renal toxicity, Cardiovascular events.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00017",
+    "name": "Amlodipine",
+    "generic_name": "amlodipine",
+    "drug_class": "Calcium channel blocker",
+    "metabolism_pathway": "CYP3A4",
+    "half_life_hours": 40.0,
+    "interactions": [
+      "Simvastatin",
+      "Cyclosporine",
+      "CYP3A4 inhibitors"
+    ],
+    "contraindications": [
+      "Severe aortic stenosis",
+      "Cardiogenic shock"
+    ],
+    "adverse_events": [
+      "Peripheral edema",
+      "Dizziness",
+      "Flushing",
+      "Palpitations"
+    ],
+    "text": "Amlodipine is a Calcium channel blocker metabolized via CYP3A4 with a half-life of 40.0 hours. Known drug interactions include: Simvastatin, Cyclosporine, CYP3A4 inhibitors. Contraindications: Severe aortic stenosis, Cardiogenic shock. Adverse events: Peripheral edema, Dizziness, Flushing, Palpitations.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00018",
+    "name": "Tramadol",
+    "generic_name": "tramadol",
+    "drug_class": "Opioid analgesic",
+    "metabolism_pathway": "CYP2D6,CYP3A4",
+    "half_life_hours": 6.3,
+    "interactions": [
+      "SSRIs",
+      "MAOIs",
+      "Carbamazepine",
+      "Ondansetron"
+    ],
+    "contraindications": [
+      "MAOIs within 14 days",
+      "Uncontrolled epilepsy",
+      "Acute intoxication"
+    ],
+    "adverse_events": [
+      "Seizures",
+      "Serotonin syndrome",
+      "Respiratory depression",
+      "Dependence"
+    ],
+    "text": "Tramadol is a Opioid analgesic metabolized via CYP2D6,CYP3A4 with a half-life of 6.3 hours. Known drug interactions include: SSRIs, MAOIs, Carbamazepine, Ondansetron. Contraindications: MAOIs within 14 days, Uncontrolled epilepsy, Acute intoxication. Adverse events: Seizures, Serotonin syndrome, Respiratory depression, Dependence.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00019",
+    "name": "Spironolactone",
+    "generic_name": "spironolactone",
+    "drug_class": "Aldosterone antagonist",
+    "metabolism_pathway": "Hepatic",
+    "half_life_hours": 1.4,
+    "interactions": [
+      "ACE inhibitors",
+      "Potassium supplements",
+      "NSAIDs",
+      "Digoxin",
+      "Lithium"
+    ],
+    "contraindications": [
+      "Hyperkalemia",
+      "Addison's disease",
+      "Severe renal impairment"
+    ],
+    "adverse_events": [
+      "Hyperkalemia",
+      "Gynecomastia",
+      "Menstrual irregularities"
+    ],
+    "text": "Spironolactone is a Aldosterone antagonist metabolized via Hepatic with a half-life of 1.4 hours. Known drug interactions include: ACE inhibitors, Potassium supplements, NSAIDs, Digoxin, Lithium. Contraindications: Hyperkalemia, Addison's disease, Severe renal impairment. Adverse events: Hyperkalemia, Gynecomastia, Menstrual irregularities.",
+    "source": "drugbank_seed"
+  },
+  {
+    "id": "DB00020",
+    "name": "Carbamazepine",
+    "generic_name": "carbamazepine",
+    "drug_class": "Anticonvulsant",
+    "metabolism_pathway": "CYP3A4",
+    "half_life_hours": 16.0,
+    "interactions": [
+      "Clarithromycin",
+      "Phenytoin",
+      "Valproic acid",
+      "Warfarin",
+      "Oral contraceptives"
+    ],
+    "contraindications": [
+      "Bone marrow depression",
+      "MAOIs within 14 days"
+    ],
+    "adverse_events": [
+      "Aplastic anemia",
+      "SJS/TEN",
+      "Hepatotoxicity",
+      "Hyponatremia"
+    ],
+    "text": "Carbamazepine is a Anticonvulsant metabolized via CYP3A4 with a half-life of 16.0 hours. Known drug interactions include: Clarithromycin, Phenytoin, Valproic acid, Warfarin, Oral contraceptives. Contraindications: Bone marrow depression, MAOIs within 14 days. Adverse events: Aplastic anemia, SJS/TEN, Hepatotoxicity, Hyponatremia.",
+    "source": "drugbank_seed"
+  }
+]

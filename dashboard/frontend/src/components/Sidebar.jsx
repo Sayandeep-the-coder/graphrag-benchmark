@@ -16,7 +16,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'evaluations', label: 'System Logs', icon: Terminal },
     { id: 'knowledge', label: 'Knowledge Map', icon: Share2 },
-    { id: 'alerts', label: 'System Health', icon: Bell },
   ];
 
   return (

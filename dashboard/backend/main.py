@@ -34,6 +34,7 @@ from pipelines import pipeline1_llm_only as p1
 from pipelines.pipeline2_basic_rag import query as p2
 from pipelines.pipeline3_graphrag import query as p3
 from evaluation.accuracy import evaluate_all_pipelines
+from evaluation.benchmark_runner import BENCHMARK_QUERIES
 from utils.security import sanitize_error
 
 app = FastAPI(
@@ -78,6 +79,7 @@ async def compare(request: CompareRequest):
                 p1_answers=[r1["answer"]],
                 p2_answers=[r2["answer"]],
                 ground_truths=[request.ground_truth],
+                p3_answers=[r3["answer"]],
             )
         except Exception as e:
             print(sanitize_error(f"Evaluation failed: {e}"))
@@ -105,22 +107,27 @@ async def compare_stream(request: CompareRequest):
     """
     async def event_generator():
         queue = asyncio.Queue()
+        final_results = {}
 
         async def consume_pipeline(pipeline_id, gen):
             try:
                 async for chunk in gen:
                     chunk["pipeline"] = pipeline_id
+                    if chunk.get("type") == "done":
+                        final_results[pipeline_id] = chunk
                     await queue.put(chunk)
             except Exception as e:
                 err_msg = sanitize_error(f"Error: {e}")
                 await queue.put({"pipeline": pipeline_id, "type": "chunk", "text": err_msg, "tokens": 0})
-                await queue.put({"pipeline": pipeline_id, "type": "done", "answer": err_msg, "metrics": {}})
+                done = {"pipeline": pipeline_id, "type": "done", "answer": err_msg, "metrics": {}}
+                final_results[pipeline_id] = done
+                await queue.put(done)
 
         # Start all consumers
         tasks = [
             asyncio.create_task(consume_pipeline("llm_only", p1.run_stream(request.query))),
             asyncio.create_task(consume_pipeline("basic_rag", p2.run_stream(request.query, request.top_k, request.namespace))),
-            asyncio.create_task(consume_pipeline("graphrag", p3.run_stream(request.query, "hybrid", 2))),
+            asyncio.create_task(consume_pipeline("graphrag", p3.run_stream(request.query))),
         ]
 
         while True:
@@ -132,12 +139,77 @@ async def compare_stream(request: CompareRequest):
             except asyncio.TimeoutError:
                 continue
 
+        if request.ground_truth and len(final_results) == 3:
+            try:
+                accuracy = evaluate_all_pipelines(
+                    questions=[request.query],
+                    p1_answers=[final_results["llm_only"].get("answer", "")],
+                    p2_answers=[final_results["basic_rag"].get("answer", "")],
+                    ground_truths=[request.ground_truth],
+                    p3_answers=[final_results["graphrag"].get("answer", "")],
+                )
+                yield f"data: {json.dumps({'type': 'accuracy', 'accuracy': accuracy})}\n\n"
+            except Exception as e:
+                err_msg = sanitize_error(f"Evaluation failed: {e}")
+                yield f"data: {json.dumps({'type': 'status', 'pipeline': 'system', 'message': err_msg})}\n\n"
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
     return HealthResponse(status="ok")
+
+
+@app.get("/implementation/status")
+async def implementation_status():
+    """Expose implemented hackathon strategy pieces for the frontend."""
+    categories = {}
+    for item in BENCHMARK_QUERIES:
+        category = item.get("category", "GENERAL")
+        categories[category] = categories.get(category, 0) + 1
+
+    files = {
+        "medical_graph_schema": "scripts/schema/medical_graph.gsql",
+        "polypharmacy_query": "scripts/schema/polypharmacy_query.gsql",
+        "query_router": "utils/query_router.py",
+        "context_compression": "utils/context_compression.py",
+        "who_guideline_loader": "scripts/data_collection/who_guidelines_loader.py",
+        "entity_extraction": "scripts/entity_extraction/extract_and_load.py",
+        "gsd_checklist": ".planning/GSD-IMPLEMENTATION-CHECKLIST.md",
+    }
+
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    artifacts = {
+        name: {
+            "path": path,
+            "present": os.path.exists(os.path.join(root, path)),
+        }
+        for name, path in files.items()
+    }
+
+    return {
+        "thesis": "Polypharmacy and symptom-to-diagnosis reasoning are graph traversal problems.",
+        "benchmark": {
+            "total_questions": len(BENCHMARK_QUERIES),
+            "categories": categories,
+            "target_accuracy": {"llm_judge": 0.90, "bertscore": 0.55},
+            "named_finding": "The Cascade Collapse",
+        },
+        "pipelines": [
+            {"name": "LLM-Only", "status": "implemented", "role": "training-knowledge baseline"},
+            {"name": "Basic RAG", "status": "implemented", "role": "Pinecone vector retrieval baseline"},
+            {"name": "GraphRAG", "status": "implemented", "role": "TigerGraph route-aware graph traversal"},
+        ],
+        "graph_features": [
+            "Clinical graph schema with drugs, diseases, symptoms, enzymes, adverse events, and guidelines",
+            "Polypharmacy GSQL traversal for direct, enzyme-mediated, and adverse-event cascades",
+            "Route-aware retrievers for interaction, diagnosis, contradiction, temporal, multihop, counterfactual, and cross-entity queries",
+            "Compressed structured JSON graph context for token reduction",
+            "Dashboard clinical warnings and graph path surfacing",
+        ],
+        "artifacts": artifacts,
+    }
 
 
 def _run_rag_ingest():
@@ -165,16 +237,113 @@ async def ingest_graphrag(background_tasks: BackgroundTasks):
 
 @app.get("/knowledge-base")
 async def get_knowledge_base():
-    kb_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "medical", "knowledge_base.txt")
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+    def estimate_tokens(text: str) -> int:
+        return int(len(text) / 4)
+
+    def file_info(path: str) -> dict:
+        stat = os.stat(path)
+        return {
+            "source_path": os.path.relpath(path, root).replace("\\", "/"),
+            "last_modified": stat.st_mtime,
+            "size_bytes": stat.st_size,
+        }
+
+    unified_path = os.path.join(root, "data", "processed", "unified_corpus.json")
+    corpus_text_path = os.path.join(root, "data", "processed", "corpus_text.txt")
+    graphrag_jsonl_path = os.path.join(root, "data", "medical", "graphrag_ingest.jsonl")
+    legacy_kb_path = os.path.join(root, "data", "medical", "knowledge_base.txt")
+
+    if os.path.exists(unified_path):
+        try:
+            with open(unified_path, "r", encoding="utf-8") as f:
+                docs = json.load(f)
+
+            source_counts = {}
+            sections = []
+            for doc in docs:
+                source = doc.get("source") or doc.get("source_type") or "unknown"
+                source_counts[source] = source_counts.get(source, 0) + 1
+                title = doc.get("title") or doc.get("name") or doc.get("id") or "Untitled"
+                sections.append(
+                    f"Source: {source}\n"
+                    f"Record: {title}\n"
+                    f"{doc.get('text', '')}"
+                )
+
+            content = "\n\n---\n\n".join(sections)
+            return {
+                "content": content,
+                "total_tokens": estimate_tokens(content),
+                "documents": len(docs),
+                "source_counts": source_counts,
+                "status": "dynamic_processed_corpus",
+                "architecture": "Generated corpus from DrugBank/seed drugs, disease-symptom mappings, WHO guidelines, and any cached PubMed/FDA data; indexed by Pinecone and traversed by TigerGraph GraphRAG.",
+                **file_info(unified_path),
+            }
+        except Exception as e:
+            return {"content": f"Error reading processed corpus: {str(e)}", "total_tokens": 0, "status": "error"}
+
+    if os.path.exists(corpus_text_path):
+        try:
+            with open(corpus_text_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return {
+                "content": content,
+                "total_tokens": estimate_tokens(content),
+                "documents": content.count("\n\n") + 1 if content else 0,
+                "source_counts": {"processed_text": 1},
+                "status": "dynamic_processed_text",
+                "architecture": "Generated text corpus from the data collection pipeline; ready for Pinecone ingestion and GraphRAG extraction.",
+                **file_info(corpus_text_path),
+            }
+        except Exception as e:
+            return {"content": f"Error reading processed text corpus: {str(e)}", "total_tokens": 0, "status": "error"}
+
+    if os.path.exists(graphrag_jsonl_path):
+        try:
+            records = []
+            with open(graphrag_jsonl_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        records.append(json.loads(line))
+            content = "\n\n---\n\n".join(record.get("content", "") for record in records)
+            return {
+                "content": content,
+                "total_tokens": estimate_tokens(content),
+                "documents": len(records),
+                "source_counts": {"graphrag_jsonl": len(records)},
+                "status": "dynamic_graphrag_ingest",
+                "architecture": "GraphRAG JSONL ingest file generated from local medical knowledge; use the collection pipeline for the full clinical corpus.",
+                **file_info(graphrag_jsonl_path),
+            }
+        except Exception as e:
+            return {"content": f"Error reading GraphRAG ingest JSONL: {str(e)}", "total_tokens": 0, "status": "error"}
+
+    kb_path = legacy_kb_path
     if not os.path.exists(kb_path):
-        return {"content": "File not found.", "total_tokens": 0}
+        return {
+            "content": "No knowledge base found. Run python scripts/data_collection/collect_all.py to build the dynamic corpus.",
+            "total_tokens": 0,
+            "documents": 0,
+            "source_counts": {},
+            "status": "missing",
+        }
     try:
         with open(kb_path, "r", encoding="utf-8") as f:
             content = f.read()
-            token_estimate = int(len(content.split()) * 1.3)
-            return {"content": content, "total_tokens": token_estimate}
+            return {
+                "content": content,
+                "total_tokens": estimate_tokens(content),
+                "documents": content.count("Disease:"),
+                "source_counts": {"legacy_medical_text": 1},
+                "status": "legacy_static_file",
+                "architecture": "Legacy static demo file. Run python scripts/data_collection/collect_all.py to replace this with the dynamic multi-source corpus.",
+                **file_info(kb_path),
+            }
     except Exception as e:
-        return {"content": f"Error: {str(e)}", "total_tokens": 0}
+        return {"content": f"Error: {str(e)}", "total_tokens": 0, "status": "error"}
 
 
 @app.get("/metrics/summary")

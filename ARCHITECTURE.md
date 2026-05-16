@@ -77,7 +77,7 @@ The dashboard computes **token reduction %** as `(P2 total tokens − P3 total t
 | Index | `PINECONE_INDEX_NAME` (default `graphrag-benchmark`) |
 | Namespace | `medical-rag` (dashboard default) |
 | Embeddings | `models/embedding-001` |
-| Index dimension | **768** (must match embedding model output) |
+| Index dimension | **1024** (Optimized for medical context) |
 | Metric | cosine |
 | Chunking | `CHUNK_SIZE=1000`, `CHUNK_OVERLAP=100` |
 

@@ -28,7 +28,7 @@ Used for: P1 (`gemini-2.5-flash`), P2 (`gemma-4-26b-a4b-it`, `embedding-001`), G
 1. [pinecone.io](https://pinecone.io) → API key
 2. Create a **serverless** index:
    - Name: `graphrag-benchmark` (or set `PINECONE_INDEX_NAME`)
-   - **Dimensions: 768** (for `models/embedding-001`)
+   - **Dimensions: 1024** (or match `PINECONE_EMBEDDING_DIMENSION`)
    - Metric: cosine
    - Region: e.g. `us-east-1`
 

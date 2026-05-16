@@ -47,7 +47,7 @@ Required:
 - `TG_HOST`, `TG_PASSWORD` (for GraphRAG / TigerGraph)
 - `GRAPHRAG_SERVICE_URL` (default `http://localhost:8000`)
 
-Create a Pinecone index whose **dimension matches** `models/embedding-001` output (768). See `scripts/create_pinecone_index.py`.
+Create a Pinecone index whose **dimension matches** `PINECONE_EMBEDDING_DIMENSION` (default 1024). See `scripts/create_pinecone_index.py`.
 
 ### 2. Python
 
