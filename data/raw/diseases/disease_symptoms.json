@@ -1,0 +1,571 @@
+[
+  {
+    "id": "DIS001",
+    "name": "Type 2 Diabetes Mellitus",
+    "icd_code": "E11",
+    "category": "Endocrine",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Polyuria",
+        "frequency": 0.85,
+        "early_sign": true
+      },
+      {
+        "name": "Polydipsia",
+        "frequency": 0.8,
+        "early_sign": true
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.75,
+        "early_sign": false
+      },
+      {
+        "name": "Blurred vision",
+        "frequency": 0.5,
+        "early_sign": false
+      },
+      {
+        "name": "Weight loss",
+        "frequency": 0.45,
+        "early_sign": false
+      },
+      {
+        "name": "Peripheral neuropathy",
+        "frequency": 0.3,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Metformin"
+    ],
+    "second_line_drugs": [
+      "Glipizide",
+      "Sitagliptin",
+      "Empagliflozin"
+    ],
+    "comorbidities": [
+      "Hypertension",
+      "Chronic Kidney Disease",
+      "Coronary Artery Disease"
+    ],
+    "text": "Type 2 Diabetes Mellitus (ICD: E11) is a chronic endocrine condition. Common symptoms include: Polyuria, Polydipsia, Fatigue, Blurred vision, Weight loss, Peripheral neuropathy. Treatment options: Metformin, Glipizide, Sitagliptin, Empagliflozin. Common comorbidities: Hypertension, Chronic Kidney Disease, Coronary Artery Disease.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS002",
+    "name": "Hypertension",
+    "icd_code": "I10",
+    "category": "Cardiovascular",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Headache",
+        "frequency": 0.4,
+        "early_sign": false
+      },
+      {
+        "name": "Dizziness",
+        "frequency": 0.35,
+        "early_sign": false
+      },
+      {
+        "name": "Chest pain",
+        "frequency": 0.2,
+        "early_sign": false
+      },
+      {
+        "name": "Visual disturbances",
+        "frequency": 0.15,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Lisinopril",
+      "Amlodipine",
+      "Losartan"
+    ],
+    "second_line_drugs": [
+      "Metoprolol",
+      "Spironolactone",
+      "Hydrochlorothiazide"
+    ],
+    "comorbidities": [
+      "Type 2 Diabetes Mellitus",
+      "Chronic Kidney Disease",
+      "Heart Failure"
+    ],
+    "text": "Hypertension (ICD: I10) is a chronic cardiovascular condition. Common symptoms include: Headache, Dizziness, Chest pain, Visual disturbances. Treatment options: Lisinopril, Amlodipine, Losartan, Metoprolol, Spironolactone, Hydrochlorothiazide. Common comorbidities: Type 2 Diabetes Mellitus, Chronic Kidney Disease, Heart Failure.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS003",
+    "name": "Atrial Fibrillation",
+    "icd_code": "I48",
+    "category": "Cardiovascular",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Palpitations",
+        "frequency": 0.8,
+        "early_sign": true
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.6,
+        "early_sign": false
+      },
+      {
+        "name": "Dyspnea",
+        "frequency": 0.55,
+        "early_sign": false
+      },
+      {
+        "name": "Dizziness",
+        "frequency": 0.4,
+        "early_sign": false
+      },
+      {
+        "name": "Chest pain",
+        "frequency": 0.3,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Warfarin",
+      "Metoprolol",
+      "Digoxin"
+    ],
+    "second_line_drugs": [
+      "Amiodarone",
+      "Apixaban",
+      "Rivaroxaban"
+    ],
+    "comorbidities": [
+      "Heart Failure",
+      "Hypertension",
+      "Stroke"
+    ],
+    "text": "Atrial Fibrillation (ICD: I48) is a chronic cardiovascular condition. Common symptoms include: Palpitations, Fatigue, Dyspnea, Dizziness, Chest pain. Treatment options: Warfarin, Metoprolol, Digoxin, Amiodarone, Apixaban, Rivaroxaban. Common comorbidities: Heart Failure, Hypertension, Stroke.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS004",
+    "name": "Coronary Artery Disease",
+    "icd_code": "I25",
+    "category": "Cardiovascular",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Chest pain",
+        "frequency": 0.9,
+        "early_sign": true
+      },
+      {
+        "name": "Dyspnea",
+        "frequency": 0.65,
+        "early_sign": false
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.5,
+        "early_sign": false
+      },
+      {
+        "name": "Palpitations",
+        "frequency": 0.3,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Aspirin",
+      "Atorvastatin",
+      "Metoprolol"
+    ],
+    "second_line_drugs": [
+      "Clopidogrel",
+      "Amlodipine",
+      "Lisinopril"
+    ],
+    "comorbidities": [
+      "Hypertension",
+      "Type 2 Diabetes Mellitus",
+      "Hyperlipidemia"
+    ],
+    "text": "Coronary Artery Disease (ICD: I25) is a chronic cardiovascular condition. Common symptoms include: Chest pain, Dyspnea, Fatigue, Palpitations. Treatment options: Aspirin, Atorvastatin, Metoprolol, Clopidogrel, Amlodipine, Lisinopril. Common comorbidities: Hypertension, Type 2 Diabetes Mellitus, Hyperlipidemia.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS005",
+    "name": "Heart Failure",
+    "icd_code": "I50",
+    "category": "Cardiovascular",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Dyspnea",
+        "frequency": 0.95,
+        "early_sign": true
+      },
+      {
+        "name": "Peripheral edema",
+        "frequency": 0.8,
+        "early_sign": true
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.75,
+        "early_sign": false
+      },
+      {
+        "name": "Orthopnea",
+        "frequency": 0.6,
+        "early_sign": false
+      },
+      {
+        "name": "Weight gain",
+        "frequency": 0.5,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Lisinopril",
+      "Metoprolol",
+      "Spironolactone"
+    ],
+    "second_line_drugs": [
+      "Digoxin",
+      "Furosemide",
+      "Hydralazine"
+    ],
+    "comorbidities": [
+      "Coronary Artery Disease",
+      "Atrial Fibrillation",
+      "Chronic Kidney Disease"
+    ],
+    "text": "Heart Failure (ICD: I50) is a chronic cardiovascular condition. Common symptoms include: Dyspnea, Peripheral edema, Fatigue, Orthopnea, Weight gain. Treatment options: Lisinopril, Metoprolol, Spironolactone, Digoxin, Furosemide, Hydralazine. Common comorbidities: Coronary Artery Disease, Atrial Fibrillation, Chronic Kidney Disease.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS006",
+    "name": "Chronic Kidney Disease",
+    "icd_code": "N18",
+    "category": "Renal",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Fatigue",
+        "frequency": 0.7,
+        "early_sign": false
+      },
+      {
+        "name": "Peripheral edema",
+        "frequency": 0.6,
+        "early_sign": false
+      },
+      {
+        "name": "Nausea",
+        "frequency": 0.45,
+        "early_sign": false
+      },
+      {
+        "name": "Decreased urine output",
+        "frequency": 0.4,
+        "early_sign": true
+      },
+      {
+        "name": "Muscle cramps",
+        "frequency": 0.35,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Lisinopril",
+      "Amlodipine"
+    ],
+    "second_line_drugs": [
+      "Erythropoietin",
+      "Sodium bicarbonate"
+    ],
+    "comorbidities": [
+      "Type 2 Diabetes Mellitus",
+      "Hypertension",
+      "Heart Failure"
+    ],
+    "text": "Chronic Kidney Disease (ICD: N18) is a chronic renal condition. Common symptoms include: Fatigue, Peripheral edema, Nausea, Decreased urine output, Muscle cramps. Treatment options: Lisinopril, Amlodipine, Erythropoietin, Sodium bicarbonate. Common comorbidities: Type 2 Diabetes Mellitus, Hypertension, Heart Failure.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS007",
+    "name": "Major Depressive Disorder",
+    "icd_code": "F33",
+    "category": "Psychiatric",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Depressed mood",
+        "frequency": 0.95,
+        "early_sign": true
+      },
+      {
+        "name": "Anhedonia",
+        "frequency": 0.85,
+        "early_sign": true
+      },
+      {
+        "name": "Insomnia",
+        "frequency": 0.7,
+        "early_sign": false
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.65,
+        "early_sign": false
+      },
+      {
+        "name": "Appetite changes",
+        "frequency": 0.55,
+        "early_sign": false
+      },
+      {
+        "name": "Difficulty concentrating",
+        "frequency": 0.5,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Fluoxetine",
+      "Sertraline"
+    ],
+    "second_line_drugs": [
+      "Venlafaxine",
+      "Bupropion",
+      "Mirtazapine"
+    ],
+    "comorbidities": [
+      "Generalized Anxiety Disorder",
+      "Chronic Pain",
+      "Type 2 Diabetes Mellitus"
+    ],
+    "text": "Major Depressive Disorder (ICD: F33) is a chronic psychiatric condition. Common symptoms include: Depressed mood, Anhedonia, Insomnia, Fatigue, Appetite changes, Difficulty concentrating. Treatment options: Fluoxetine, Sertraline, Venlafaxine, Bupropion, Mirtazapine. Common comorbidities: Generalized Anxiety Disorder, Chronic Pain, Type 2 Diabetes Mellitus.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS008",
+    "name": "Epilepsy",
+    "icd_code": "G40",
+    "category": "Neurological",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Seizures",
+        "frequency": 1.0,
+        "early_sign": true
+      },
+      {
+        "name": "Loss of consciousness",
+        "frequency": 0.7,
+        "early_sign": false
+      },
+      {
+        "name": "Confusion",
+        "frequency": 0.6,
+        "early_sign": false
+      },
+      {
+        "name": "Muscle rigidity",
+        "frequency": 0.4,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Carbamazepine",
+      "Phenytoin",
+      "Valproic acid"
+    ],
+    "second_line_drugs": [
+      "Levetiracetam",
+      "Lamotrigine"
+    ],
+    "comorbidities": [
+      "Major Depressive Disorder",
+      "Anxiety"
+    ],
+    "text": "Epilepsy (ICD: G40) is a chronic neurological condition. Common symptoms include: Seizures, Loss of consciousness, Confusion, Muscle rigidity. Treatment options: Carbamazepine, Phenytoin, Valproic acid, Levetiracetam, Lamotrigine. Common comorbidities: Major Depressive Disorder, Anxiety.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS009",
+    "name": "GERD",
+    "icd_code": "K21",
+    "category": "Gastrointestinal",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Heartburn",
+        "frequency": 0.9,
+        "early_sign": true
+      },
+      {
+        "name": "Regurgitation",
+        "frequency": 0.75,
+        "early_sign": true
+      },
+      {
+        "name": "Dysphagia",
+        "frequency": 0.3,
+        "early_sign": false
+      },
+      {
+        "name": "Chest pain",
+        "frequency": 0.25,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Omeprazole"
+    ],
+    "second_line_drugs": [
+      "Ranitidine",
+      "Esomeprazole"
+    ],
+    "comorbidities": [
+      "Peptic Ulcer Disease",
+      "Bronchial Asthma"
+    ],
+    "text": "GERD (ICD: K21) is a chronic gastrointestinal condition. Common symptoms include: Heartburn, Regurgitation, Dysphagia, Chest pain. Treatment options: Omeprazole, Ranitidine, Esomeprazole. Common comorbidities: Peptic Ulcer Disease, Bronchial Asthma.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS010",
+    "name": "Rheumatoid Arthritis",
+    "icd_code": "M06",
+    "category": "Rheumatological",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Joint pain",
+        "frequency": 0.95,
+        "early_sign": true
+      },
+      {
+        "name": "Joint stiffness",
+        "frequency": 0.9,
+        "early_sign": true
+      },
+      {
+        "name": "Joint swelling",
+        "frequency": 0.85,
+        "early_sign": true
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.6,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Methotrexate",
+      "Ibuprofen"
+    ],
+    "second_line_drugs": [
+      "Hydroxychloroquine",
+      "Sulfasalazine",
+      "Prednisone"
+    ],
+    "comorbidities": [
+      "Osteoporosis",
+      "Cardiovascular Disease"
+    ],
+    "text": "Rheumatoid Arthritis (ICD: M06) is a chronic rheumatological condition. Common symptoms include: Joint pain, Joint stiffness, Joint swelling, Fatigue. Treatment options: Methotrexate, Ibuprofen, Hydroxychloroquine, Sulfasalazine, Prednisone. Common comorbidities: Osteoporosis, Cardiovascular Disease.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS011",
+    "name": "Chronic Pain Syndrome",
+    "icd_code": "G89",
+    "category": "Pain",
+    "chronic": true,
+    "symptoms": [
+      {
+        "name": "Persistent pain",
+        "frequency": 1.0,
+        "early_sign": true
+      },
+      {
+        "name": "Fatigue",
+        "frequency": 0.7,
+        "early_sign": false
+      },
+      {
+        "name": "Insomnia",
+        "frequency": 0.65,
+        "early_sign": false
+      },
+      {
+        "name": "Depression",
+        "frequency": 0.55,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Ibuprofen",
+      "Tramadol"
+    ],
+    "second_line_drugs": [
+      "Gabapentin",
+      "Duloxetine",
+      "Amitriptyline"
+    ],
+    "comorbidities": [
+      "Major Depressive Disorder",
+      "Generalized Anxiety Disorder"
+    ],
+    "text": "Chronic Pain Syndrome (ICD: G89) is a chronic pain condition. Common symptoms include: Persistent pain, Fatigue, Insomnia, Depression. Treatment options: Ibuprofen, Tramadol, Gabapentin, Duloxetine, Amitriptyline. Common comorbidities: Major Depressive Disorder, Generalized Anxiety Disorder.",
+    "source": "disease_symptom_dataset"
+  },
+  {
+    "id": "DIS012",
+    "name": "Deep Vein Thrombosis",
+    "icd_code": "I82",
+    "category": "Vascular",
+    "chronic": false,
+    "symptoms": [
+      {
+        "name": "Leg swelling",
+        "frequency": 0.85,
+        "early_sign": true
+      },
+      {
+        "name": "Leg pain",
+        "frequency": 0.8,
+        "early_sign": true
+      },
+      {
+        "name": "Warmth over affected area",
+        "frequency": 0.5,
+        "early_sign": false
+      },
+      {
+        "name": "Skin discoloration",
+        "frequency": 0.4,
+        "early_sign": false
+      }
+    ],
+    "first_line_drugs": [
+      "Warfarin",
+      "Heparin"
+    ],
+    "second_line_drugs": [
+      "Rivaroxaban",
+      "Apixaban"
+    ],
+    "comorbidities": [
+      "Pulmonary Embolism",
+      "Atrial Fibrillation"
+    ],
+    "text": "Deep Vein Thrombosis (ICD: I82) is a acute vascular condition. Common symptoms include: Leg swelling, Leg pain, Warmth over affected area, Skin discoloration. Treatment options: Warfarin, Heparin, Rivaroxaban, Apixaban. Common comorbidities: Pulmonary Embolism, Atrial Fibrillation.",
+    "source": "disease_symptom_dataset"
+  }
+]

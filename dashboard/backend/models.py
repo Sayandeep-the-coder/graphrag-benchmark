@@ -23,6 +23,9 @@ class PipelineResult(BaseModel):
     entities_retrieved: list | None = None
     retriever: str | None = None
     hop_depth: int | None = None
+    query_category: str | None = None
+    route_confidence: str | None = None
+    clinical_signals: dict | None = None
 
 
 class CompareResponse(BaseModel):

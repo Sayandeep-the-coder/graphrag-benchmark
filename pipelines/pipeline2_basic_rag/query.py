@@ -10,6 +10,7 @@ import time
 import httpx
 import json
 import asyncio
+import requests
 from dotenv import load_dotenv
 
 from utils.embeddings import get_pinecone_client, embed_texts
@@ -23,18 +24,16 @@ load_dotenv()
 _pc = None
 _index = None
 _model_id = "models/gemma-4-26b-a4b-it"
-_embed_model_id = "models/gemini-embedding-001"
 
-TOP_K = 3  # Number of chunks to retrieve (optimized for medical data)
+TOP_K = 5  # Increased from 3 to improve recall
 
 
 def _get_clients():
     """Lazily initialize Pinecone client and index on first call."""
-    global _pc, _index
-    if _pc is None or _index is None:
-        _pc = get_pinecone_client()
-        _index = _pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
-    return _index, _pc
+    if not hasattr(_get_clients, "pc") or not hasattr(_get_clients, "index"):
+        _get_clients.pc = get_pinecone_client()
+        _get_clients.index = _get_clients.pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
+    return _get_clients.index, _get_clients.pc
 
 
 def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
@@ -57,7 +56,7 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     )
 
     matches = results.get("matches", [])
-    min_score_threshold = 0.5
+    min_score_threshold = 0.2  # Lowered from 0.4 to handle low cosine scores in this dataset
     score_drop_threshold = 0.05
     chunks = []
     scores = []
@@ -66,6 +65,7 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
         prev_score = matches[0]["score"]
         for match in matches:
             score = match["score"]
+            # Flexible thresholding
             if score < min_score_threshold or (len(chunks) > 0 and (prev_score - score) > score_drop_threshold):
                 break
             chunks.append(match["metadata"]["text"])
@@ -76,7 +76,7 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     
     if not chunks:
         return {
-            "answer": "Error: No relevant context was found.",
+            "answer": "Error: No relevant context was found in Pinecone. Ensure data is ingested.",
             "metrics": metrics.to_dict(),
             "chunks_retrieved": 0,
             "similarity_scores": [],
@@ -91,15 +91,14 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     )
 
     start = time.time()
-    try:
-        def _make_request():
-            import requests
-            url = f"https://generativelanguage.googleapis.com/v1beta/{_model_id}:generateContent?key={os.getenv('GEMINI_API_KEY')}"
-            payload = {"contents": [{"parts": [{"text": prompt}]}]}
-            resp = requests.post(url, json=payload)
-            resp.raise_for_status()
-            return resp.json()
+    def _make_request():
+        url = f"https://generativelanguage.googleapis.com/v1beta/{_model_id}:generateContent?key={os.getenv('GEMINI_API_KEY')}"
+        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+        resp = requests.post(url, json=payload, timeout=60)
+        resp.raise_for_status()
+        return resp.json()
 
+    try:
         response_json = with_retry(_make_request) or {}
         candidates = response_json.get("candidates", [])
         if candidates:
@@ -107,8 +106,8 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
             text_parts = [p.get("text", "") for p in parts if not p.get("thought", False)]
             answer = "".join(text_parts).strip()
         else:
-            answer = "Error: LLM service returned an invalid response."
-    except Exception as e:
+            answer = "Error: LLM service returned an empty response."
+    except (requests.RequestException, ValueError, RuntimeError) as e:
         answer = sanitize_error(f"Error generating response: {str(e)}")
     
     metrics.record(prompt, answer, start)
@@ -130,20 +129,20 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
     index, pc = _get_clients()
 
     # Step 1: Embed query
-    start = time.time()
     query_embedding = embed_texts(pc, [query], input_type="query")[0]
 
     # Step 2: Pinecone similarity search
     fetch_k = max(15, top_k * 2)
-    results = index.query(
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(None, lambda: index.query(
         vector=query_embedding,
         top_k=fetch_k,
         namespace=namespace,
         include_metadata=True,
-    )
+    ))
 
     matches = results.get("matches", [])
-    min_score_threshold = 0.5
+    min_score_threshold = 0.2
     score_drop_threshold = 0.05
     chunks = []
     scores = []
@@ -194,25 +193,23 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
                             candidates = data.get("candidates", [])
                             if candidates:
                                 parts = candidates[0].get("content", {}).get("parts", [])
-                                text_parts = [p.get("text", "") for p in parts if not p.get("thought", False)]
-                                chunk = "".join(text_parts)
-                                if chunk:
-                                    answer += chunk
-                                    metrics.completion_tokens = int(len(answer.split()) * 1.3)
-                                    yield {"type": "chunk", "text": chunk, "tokens": metrics.completion_tokens + prompt_tokens}
-                        except Exception:
+                                for p in parts:
+                                    if "text" in p:
+                                        chunk_text = p["text"]
+                                        answer += chunk_text
+                                        yield {"type": "chunk", "text": chunk_text, "tokens": prompt_tokens}
+                        except json.JSONDecodeError:
                             continue
-    except Exception as e:
-        answer = sanitize_error(f"Error generating response: {str(e)}")
+    except (httpx.HTTPError, ValueError, json.JSONDecodeError) as e:
+        answer = sanitize_error(f"Error: {str(e)}")
         yield {"type": "chunk", "text": answer, "tokens": 0}
 
+    metrics.completion_tokens = int(len(answer.split()) * 1.3)
     metrics.prompt_tokens = prompt_tokens
-    metrics.record(prompt, answer, start)
-
+    
     yield {
         "type": "done",
-        "metrics": metrics.to_dict(),
         "answer": answer,
+        "metrics": metrics.to_dict(),
         "chunks_retrieved": len(chunks),
-        "similarity_scores": scores,
     }

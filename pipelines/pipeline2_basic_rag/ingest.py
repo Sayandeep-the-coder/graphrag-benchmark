@@ -18,7 +18,7 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark")
 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 100
-BATCH_SIZE = 100
+BATCH_SIZE = 96
 
 # --- Clients ---
 pc = get_pinecone_client()

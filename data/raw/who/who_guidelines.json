@@ -1,0 +1,78 @@
+[
+  {
+    "id": "WHO-EML-2023-AF-WARFARIN",
+    "source": "WHO Essential Medicines List",
+    "year": 2023,
+    "drug": "Warfarin",
+    "for_disease": "Atrial Fibrillation",
+    "recommendation": "Warfarin is an oral anticoagulant option requiring INR monitoring; avoid unsafe combinations that increase bleeding risk.",
+    "evidence_level": "A",
+    "contradicts": [],
+    "text": "WHO 2023 guideline: Warfarin treats atrial fibrillation and venous thrombosis but requires INR monitoring. Co-prescribing with antiplatelets, azole antifungals, or macrolide antibiotics can increase bleeding risk.",
+    "source_type": "guideline"
+  },
+  {
+    "id": "WHO-EML-2023-DM-METFORMIN",
+    "source": "WHO Essential Medicines List",
+    "year": 2023,
+    "drug": "Metformin",
+    "for_disease": "Type 2 Diabetes Mellitus",
+    "recommendation": "Metformin remains first-line therapy for type 2 diabetes when renal function is adequate.",
+    "evidence_level": "A",
+    "contradicts": [],
+    "text": "WHO 2023 guideline: Metformin is first-line treatment for type 2 diabetes mellitus when kidney function is adequate. Avoid in severe renal impairment or metabolic acidosis because of lactic acidosis risk.",
+    "source_type": "guideline"
+  },
+  {
+    "id": "WHO-EML-2023-HTN-LISINOPRIL",
+    "source": "WHO Essential Medicines List",
+    "year": 2023,
+    "drug": "Lisinopril",
+    "for_disease": "Hypertension",
+    "recommendation": "ACE inhibitors are recommended antihypertensive options, with monitoring for renal function and potassium.",
+    "evidence_level": "A",
+    "contradicts": [],
+    "text": "WHO 2023 guideline: Lisinopril treats hypertension and heart failure. Monitor creatinine and potassium. Avoid combining with potassium supplements or spironolactone unless closely monitored.",
+    "source_type": "guideline"
+  },
+  {
+    "id": "WHO-EML-2023-RA-MTX",
+    "source": "WHO Essential Medicines List",
+    "year": 2023,
+    "drug": "Methotrexate",
+    "for_disease": "Rheumatoid Arthritis",
+    "recommendation": "Methotrexate is a disease-modifying therapy requiring hepatic, renal, and blood count monitoring.",
+    "evidence_level": "A",
+    "contradicts": [],
+    "text": "WHO 2023 guideline: Methotrexate treats rheumatoid arthritis but is contraindicated in pregnancy and severe renal or hepatic impairment. NSAIDs can increase toxicity risk.",
+    "source_type": "guideline"
+  },
+  {
+    "id": "FDA-2023-ASPIRIN-ELDERLY",
+    "source": "FDA Safety Communication",
+    "year": 2023,
+    "drug": "Aspirin",
+    "for_disease": "Primary Prevention",
+    "recommendation": "Routine aspirin for primary prevention in older adults is discouraged when bleeding risk outweighs benefit.",
+    "evidence_level": "B",
+    "contradicts": [
+      "WHO-EML-2015-ASPIRIN-CAD"
+    ],
+    "text": "FDA 2023 guidance: Aspirin for primary prevention in elderly patients is discouraged when bleeding risk is high, especially with anticoagulants such as warfarin.",
+    "source_type": "guideline"
+  },
+  {
+    "id": "WHO-EML-2015-ASPIRIN-CAD",
+    "source": "WHO Essential Medicines List",
+    "year": 2015,
+    "drug": "Aspirin",
+    "for_disease": "Coronary Artery Disease",
+    "recommendation": "Aspirin is used for secondary prevention of coronary artery disease.",
+    "evidence_level": "A",
+    "contradicts": [
+      "FDA-2023-ASPIRIN-ELDERLY"
+    ],
+    "text": "WHO 2015 guideline: Aspirin is used for secondary prevention of coronary artery disease. This does not imply routine primary prevention in elderly patients with high bleeding risk.",
+    "source_type": "guideline"
+  }
+]
