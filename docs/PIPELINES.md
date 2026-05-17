@@ -87,8 +87,8 @@ python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace
 | Item | Value |
 |------|--------|
 | Service | `GRAPHRAG_SERVICE_URL` (default `http://localhost:8000`) |
-| Ingest | `POST /documents/batch` (batches of 10) |
-| Query | `POST /query` |
+| Ingest | pyTigerGraph `conn.ai.*` helpers plus `forceConsistencyUpdate("graphrag")` |
+| Query | `POST /{graph}/graphrag/answerquestion` |
 | Default retriever | `hybrid` |
 | Default `hop_depth` | 2 |
 
@@ -98,7 +98,9 @@ python pipelines/pipeline2_basic_rag/ingest.py --path ./data/medical --namespace
 python pipelines/pipeline3_graphrag/ingest.py --path ./data/medical
 ```
 
-Documents are sent as `{content, filename, source}`; `source` is `medical_csv` when path contains `medical`.
+Documents are converted to GraphRAG JSONL records with `doc_id`, `doc_type`, and
+`content`, loaded into TigerGraph with `runLoadingJobWithData`, then rebuilt
+through the official GraphRAG consistency update.
 
 ### Query
 
@@ -106,9 +108,15 @@ Payload:
 
 ```json
 {
-  "query": "...",
-  "retriever": "hybrid",
-  "hop_depth": 2
+  "question": "...",
+  "method": "hybrid",
+  "method_params": {
+    "indices": ["DocumentChunk", "Entity"],
+    "top_k": 5,
+    "num_hops": 2,
+    "num_seen_min": 2,
+    "verbose": false
+  }
 }
 ```
 

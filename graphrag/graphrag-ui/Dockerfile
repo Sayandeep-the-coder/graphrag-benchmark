@@ -7,7 +7,7 @@ RUN corepack enable
 
 COPY . .
 
-RUN pnpm install
+RUN pnpm install --allow-scripts
 RUN pnpm run build
 RUN pnpm i -g serve
 
