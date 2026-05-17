@@ -18,6 +18,26 @@ services:
       - app-network
     restart: unless-stopped
 
+  graphrag-ecc:
+    image: tigergraph/graphrag-ecc:latest
+    build:
+      context: ./graphrag
+      dockerfile: ecc/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file: .env
+    environment:
+      SERVER_CONFIG: /code/configs/server_config.json
+      TG_GSQL_PORT: "443"
+      INIT_EMBED_STORE: "false"
+    volumes:
+      - ./src/configs:/code/configs:ro
+      - ./data:/code/data:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
   backend:
     build:
       context: .

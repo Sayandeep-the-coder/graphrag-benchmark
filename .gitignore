@@ -59,6 +59,8 @@ yarn-error.log*
 data/**/*.csv
 data/**/*.txt
 !data/medical/knowledge_base.txt
+data/processed/graphrag_jsonl_shards/
+data/processed/graphrag_csv_shards/
 
 # ==========================================
 # OS / System Generated

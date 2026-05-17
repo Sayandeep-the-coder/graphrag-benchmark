@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from dotenv import load_dotenv
 
-from src.utils.tigergraph_ingest import ingest_to_savanna
+from utils.tigergraph_ingest import ingest_to_savanna
 
 load_dotenv()
 
