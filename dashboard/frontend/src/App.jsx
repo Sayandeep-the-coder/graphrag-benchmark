@@ -32,7 +32,7 @@ import ImplementationStatus from "./components/ImplementationStatus";
 import IngestionManager from "./components/IngestionManager";
 import BenchmarkRunner from "./components/BenchmarkRunner";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export default function App() {
   const [query, setQuery] = useState("");

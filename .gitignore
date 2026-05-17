@@ -65,7 +65,7 @@ Thumbs.db
 *~
 
 # GraphRAG specific
-graphrag/
+graphrag
 configs/server_config.json
 
 # Project Specific

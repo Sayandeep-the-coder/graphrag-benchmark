@@ -30,10 +30,11 @@ TOP_K = 5  # Increased from 3 to improve recall
 
 def _get_clients():
     """Lazily initialize Pinecone client and index on first call."""
-    if not hasattr(_get_clients, "pc") or not hasattr(_get_clients, "index"):
-        _get_clients.pc = get_pinecone_client()
-        _get_clients.index = _get_clients.pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
-    return _get_clients.index, _get_clients.pc
+    global _pc, _index
+    if _pc is None or _index is None:
+        _pc = get_pinecone_client()
+        _index = _pc.Index(os.getenv("PINECONE_INDEX_NAME", "graphrag-benchmark"))
+    return _index, _pc
 
 
 def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
@@ -84,7 +85,7 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
 
     context = "\n\n---\n\n".join(chunks)
     prompt = (
-        "Answer based ONLY on context. If unknown, say so.\n"
+        "Answer based ONLY on context. Be extremely concise (1-2 sentences maximum). If unknown, say so.\n"
         f"Context:\n{context}\n"
         f"Q: {query}\n"
         "A:"
@@ -167,7 +168,7 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
 
     context = "\n\n---\n\n".join(chunks)
     prompt = (
-        "Answer based ONLY on context. If unknown, say so.\n"
+        "Answer based ONLY on context. Be extremely concise (1-2 sentences maximum). If unknown, say so.\n"
         f"Context:\n{context}\n"
         f"Q: {query}\n"
         "A:"
