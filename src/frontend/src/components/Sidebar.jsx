@@ -7,11 +7,12 @@ import {
   Cpu, 
   Database,
   PlusCircle,
-  Activity
+  Activity,
+  ListPlus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, onOpenEval }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Overview & metrics' },
     { id: 'knowledge', label: 'Data & Knowledge', icon: Database, desc: 'Ingestion & mapping' },
@@ -54,6 +55,14 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
             </button>
           ))}
+          
+          <button
+            onClick={onOpenEval}
+            className="sidebar-link w-full text-left group relative overflow-hidden mt-4"
+          >
+            <ListPlus size={16} className="text-gray-500 group-hover:text-accent-neon transition-colors" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 group-hover:text-white transition-colors">Eval Questions</span>
+          </button>
         </nav>
 
         {/* Workspace Metadata */}

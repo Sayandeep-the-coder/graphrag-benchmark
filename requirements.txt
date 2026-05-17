@@ -21,6 +21,7 @@ pydantic-settings==2.14.1
 # Visualization & Evaluation
 matplotlib==3.10.9
 evaluate==0.4.6
+bert-score>=0.3.13
 datasets==4.8.5
 
 # Async & Networking

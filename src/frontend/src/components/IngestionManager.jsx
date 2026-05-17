@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+
 const IngestionManager = ({ onIngestStarted }) => {
   const [ingestStatus, setIngestStatus] = useState({
     rag: 'idle',
@@ -27,7 +29,7 @@ const IngestionManager = ({ onIngestStarted }) => {
   const triggerIngest = async (type) => {
     setIngestStatus(prev => ({ ...prev, [type]: 'running' }));
     try {
-      const response = await fetch(`http://localhost:8080/ingest/${type}`, {
+      const response = await fetch(`${API_URL}/ingest/${type}`, {
         method: 'POST'
       });
       const data = await response.json();

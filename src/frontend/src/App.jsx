@@ -31,6 +31,8 @@ import KnowledgeGraph from "./components/KnowledgeGraph";
 import ImplementationStatus from "./components/ImplementationStatus";
 import IngestionManager from "./components/IngestionManager";
 import BenchmarkRunner from "./components/BenchmarkRunner";
+import EvaluationSidepanel from "./components/EvaluationSidepanel";
+import { ListPlus } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
@@ -48,6 +50,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [implementationStatus, setImplementationStatus] = useState(null);
+  const [isSidepanelOpen, setIsSidepanelOpen] = useState(false);
 
   const clearBenchmark = () => {
     setQuery("");
@@ -246,7 +249,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onOpenEval={() => setIsSidepanelOpen(true)} />
       
       <div className="flex-1 flex flex-col ml-64 overflow-hidden">
         {/* Header - Technical Overlay */}
@@ -352,6 +355,14 @@ export default function App() {
                         {tag}
                       </button>
                     ))}
+                    
+                    <button
+                      onClick={() => setIsSidepanelOpen(true)}
+                      className="px-3 py-1 rounded bg-accent-neon/10 border border-accent-neon/30 text-[9px] text-accent-neon font-bold hover:bg-accent-neon/20 transition-all uppercase tracking-wider flex items-center gap-1 ml-auto"
+                    >
+                      <ListPlus size={10} />
+                      Browse 100+ Eval Questions
+                    </button>
                   </div>
 
                   {/* Submit and Reference Controls */}
@@ -688,6 +699,16 @@ export default function App() {
           </AnimatePresence>
         </div>
       </div>
+      
+      <EvaluationSidepanel 
+        isOpen={isSidepanelOpen} 
+        onClose={() => setIsSidepanelOpen(false)} 
+        onSelect={(q, a) => {
+          setQuery(q);
+          setGroundTruth(a);
+          setShowGroundTruth(!!a);
+        }} 
+      />
     </div>
   );
 }

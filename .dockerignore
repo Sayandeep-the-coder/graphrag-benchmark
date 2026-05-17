@@ -13,3 +13,4 @@ dashboard/frontend/node_modules
 dashboard/frontend/dist
 .ipynb_checkpoints
 *.log
+data/
