@@ -40,6 +40,7 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
     """
     Run a query through the Basic RAG pipeline.
     """
+    start = time.time()
     metrics = PipelineMetrics("Basic-RAG")
     index, pc = _get_clients()
 
@@ -90,7 +91,6 @@ def run(query: str, top_k: int = TOP_K, namespace: str = "medical-rag") -> dict:
         "A:"
     )
 
-    start = time.time()
     def _make_request():
         url = f"https://generativelanguage.googleapis.com/v1beta/{_model_id}:generateContent?key={os.getenv('GEMINI_API_KEY')}"
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -123,6 +123,7 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
     """
     Run Basic RAG pipeline and yield SSE events.
     """
+    start = time.time()
     metrics = PipelineMetrics("Basic-RAG")
     yield {"type": "status", "message": "Retrieving context (Pinecone embedding)..."}
 
@@ -204,8 +205,7 @@ async def run_stream(query: str, top_k: int = TOP_K, namespace: str = "medical-r
         answer = sanitize_error(f"Error: {str(e)}")
         yield {"type": "chunk", "text": answer, "tokens": 0}
 
-    metrics.completion_tokens = int(len(answer.split()) * 1.3)
-    metrics.prompt_tokens = prompt_tokens
+    metrics.record(prompt, answer, start)
     
     yield {
         "type": "done",

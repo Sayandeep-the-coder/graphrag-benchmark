@@ -1,6 +1,6 @@
-# Polypharmacy Interaction Check — Installed GSQL Query
-# This query performs multi-hop traversal across the medical graph
-# to detect drug-drug interactions, enzyme cascades, and adverse event risks.
+// Polypharmacy Interaction Check - Installed GSQL Query
+// This query performs multi-hop traversal across the medical graph
+// to detect drug-drug interactions, enzyme cascades, and adverse event risks.
 
 CREATE QUERY polypharmacy_interaction_check(
     SET<STRING> drug_names,
@@ -17,12 +17,12 @@ SYNTAX V2 {
     SetAccum<STRING> @contraindications;
     SetAccum<STRING> @affected_enzymes;
 
-    # Seed: find all input drug nodes
+    // Seed: find all input drug nodes
     Start = {Drug.*};
     InputDrugs = SELECT d FROM Start:d
                  WHERE d.name IN drug_names;
 
-    # ── Hop 1: Direct drug-drug interactions ──
+    // -- Hop 1: Direct drug-drug interactions --
     Direct = SELECT t
         FROM InputDrugs:s -(INTERACTS_WITH:e)-> Drug:t
         WHERE t.name IN drug_names AND s != t
@@ -44,39 +44,39 @@ SYNTAX V2 {
                     ELSE "NOTE: Monitor for effects" END
             );
 
-    # ── Hop 2: Enzyme-mediated interactions ──
+    // -- Hop 2: Enzyme-mediated interactions --
     EnzymeNodes = SELECT enz
         FROM InputDrugs:d -(METABOLIZED_BY:e)-> Enzyme:enz
         ACCUM enz.@interaction_paths += d.name + (
             CASE WHEN e.is_inhibitor THEN " inhibits " ELSE " metabolized by " END
         ) + enz.name;
 
-    # Find other input drugs sharing the same enzyme pathway
+    // Find other input drugs sharing the same enzyme pathway
     EnzymeCascade = SELECT d2
         FROM EnzymeNodes:enz -(REVERSE_METABOLIZED_BY:e)-> Drug:d2
         WHERE d2.name IN drug_names
         ACCUM
             d2.@severity_score += 2.0,
             d2.@affected_enzymes += enz.name,
-            d2.@interaction_paths += "Enzyme cascade via " + enz.name + " → " + d2.name,
+            d2.@interaction_paths += "Enzyme cascade via " + enz.name + " -> " + d2.name,
             @@top_interactions += InteractionResult(
                 d2.name, 2.0,
-                "Enzyme cascade via " + enz.name + " → " + d2.name,
-                "CAUTION: Shared metabolism pathway — risk of elevated drug levels"
+                "Enzyme cascade via " + enz.name + " -> " + d2.name,
+                "CAUTION: Shared metabolism pathway - risk of elevated drug levels"
             );
 
-    # ── Hop 3: Adverse event overlap ──
+    // -- Hop 3: Adverse event overlap --
     SharedAdverse = SELECT ae
         FROM InputDrugs:d -(CAUSES:e)-> Adverse_Event:ae
         WHERE ae.severity IN ("severe", "fatal")
-        ACCUM ae.@interaction_paths += d.name + " → " + ae.description;
+        ACCUM ae.@interaction_paths += d.name + " -> " + ae.description;
 
-    # ── Contraindications check ──
+    // -- Contraindications check --
     ContraCheck = SELECT dis
         FROM InputDrugs:d -(CONTRAINDICATED_FOR:e)-> Disease:dis
         ACCUM d.@contraindications += dis.name + " (" + e.reason + ")";
 
-    # ── Collect critical findings ──
+    // -- Collect critical findings --
     CriticalDrugs = SELECT d FROM InputDrugs:d
         WHERE d.@severity_score >= 1.0
         ORDER BY d.@severity_score DESC;

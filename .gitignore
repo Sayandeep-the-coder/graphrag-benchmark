@@ -1,24 +1,31 @@
-# Environments
+# ==========================================
+# Environments & Local Secrets
+# ==========================================
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .venv
+.venv/
 venv/
 ENV/
 env/
+dist/
+build/
+node_modules/
 
-# Python
+# ==========================================
+# Python Standard & Caches
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
-dist/
-downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -26,11 +33,14 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Node / Frontend
-node_modules/
-dist/
-build/
+# ==========================================
+# Node.js / React Frontend
+# ==========================================
 .next/
 out/
 .nuxt/
@@ -41,14 +51,18 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Database / Storage
+# ==========================================
+# Database / Storage & Datasets
+# ==========================================
 *.sqlite3
 *.db
 data/**/*.csv
 data/**/*.txt
 !data/medical/knowledge_base.txt
 
-# OS generated files
+# ==========================================
+# OS / System Generated
+# ==========================================
 .DS_Store
 .DS_Store?
 ._*
@@ -57,15 +71,18 @@ data/**/*.txt
 ehthumbs.db
 Thumbs.db
 
-# IDE / Editor
+# ==========================================
+# Editors & IDEs (VS Code, JetBrains)
+# ==========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-
-# Project Specific
+# ==========================================
+# Project & Benchmark Specific
+# ==========================================
 scratch/
 results/*
 !results/.gitkeep
@@ -74,12 +91,19 @@ backend_log.txt
 src/configs/server_config.json
 src/graphrag/config/server_config.json
 
+# Standalone GraphRAG engine local configurations
+graphrag/.env
+graphrag/configs/server_config.json
 
-# GSD (get-shit-done) — local install & planning artifacts, never commit
+# ==========================================
+# GSD (Get-Shit-Done) Local Patches & Planning
+# ==========================================
 .planning/
 .cursor/
 gsd-local-patches/
 get-shit-done/
 
-# Pinecone
+# ==========================================
+# Pinecone Guides
+# ==========================================
 *[Pp][Ii][Nn][Ee][Cc][Oo][Nn][Ee]*.md
