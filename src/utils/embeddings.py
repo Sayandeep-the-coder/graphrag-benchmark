@@ -2,10 +2,9 @@
 
 import os
 from pinecone import Pinecone
-from google import genai
 
-EMBED_MODEL = os.getenv("PINECONE_EMBED_MODEL", "gemini-embedding-001")
-EMBED_DIMENSION = int(os.getenv("PINECONE_EMBEDDING_DIMENSION", "3072"))
+EMBED_MODEL = os.getenv("PINECONE_EMBED_MODEL", "llama-text-embed-v2")
+EMBED_DIMENSION = int(os.getenv("PINECONE_EMBEDDING_DIMENSION", "1024"))
 
 
 def get_pinecone_client() -> Pinecone:
@@ -18,22 +17,12 @@ def embed_texts(
     *,
     input_type: str,
 ) -> list[list[float]]:
-    """Embed texts with Google Gemini Embedding (gemini-embedding-001 by default)."""
+    """Embed texts using Pinecone's hosted inference API (llama-text-embed-v2)."""
     if not texts:
         return []
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    task_type = "RETRIEVAL_QUERY" if input_type == "query" else "RETRIEVAL_DOCUMENT"
-    embeddings = []
-    for text in texts:
-        result = client.models.embed_content(
-            model=EMBED_MODEL,
-            contents=text,
-            config={
-                "task_type": task_type,
-                "output_dimensionality": EMBED_DIMENSION,
-            },
-        )
-        if not result.embeddings:
-            raise ValueError(f"Embedding API returned no embeddings for input: {text[:80]}...")
-        embeddings.append(result.embeddings[0].values)
-    return embeddings
+    result = pc.inference.embed(
+        model=EMBED_MODEL,
+        inputs=texts,
+        parameters={"input_type": input_type, "truncate": "END"},
+    )
+    return [vec.values for vec in result.data]

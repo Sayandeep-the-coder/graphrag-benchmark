@@ -19,7 +19,7 @@ from src.graphrag.core.db.schema_utils import gsql_output_error
 logger = logging.getLogger(__name__)
 
 
-_RETRIEVER_DIR = "src/core/gsql/supportai/retrievers"
+_RETRIEVER_DIR = "src/graphrag/core/gsql/supportai/retrievers"
 
 
 TEMPLATED_RETRIEVERS: tuple = (

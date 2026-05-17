@@ -133,7 +133,7 @@ class TigerGraphEmbeddingStore(EmbeddingStore):
         need_install = False
         for q_name in vector_queries:
             if q_name not in installed_queries:
-                with open(f"src/core/gsql/vector/{q_name}.gsql", "r") as f:
+                with open(f"src/graphrag/core/gsql/vector/{q_name}.gsql", "r") as f:
                     q_body = f.read()
                 q_res = self.conn.gsql(
                     """USE GRAPH {}\nBEGIN\n{}\nEND\n""".format(

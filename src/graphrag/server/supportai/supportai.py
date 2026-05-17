@@ -28,18 +28,18 @@ def init_supportai(conn: TigerGraphConnection, graphname: str) -> tuple[dict, di
     current_schema = conn.gsql("""USE GRAPH {}\n ls""".format(graphname))
 
     supportai_queries = [
-        "src/core/gsql/supportai/Scan_For_Updates.gsql",
-        "src/core/gsql/supportai/Update_Vertices_Processing_Status.gsql",
-        "src/core/gsql/supportai/Selected_Set_Display.gsql",
-        "src/core/gsql/supportai/retrievers/GraphRAG_Hybrid_Search_Display.gsql",
-        "src/core/gsql/supportai/retrievers/GraphRAG_Community_Search_Display.gsql",
+        "src/graphrag/core/gsql/supportai/Scan_For_Updates.gsql",
+        "src/graphrag/core/gsql/supportai/Update_Vertices_Processing_Status.gsql",
+        "src/graphrag/core/gsql/supportai/Selected_Set_Display.gsql",
+        "src/graphrag/core/gsql/supportai/retrievers/GraphRAG_Hybrid_Search_Display.gsql",
+        "src/graphrag/core/gsql/supportai/retrievers/GraphRAG_Community_Search_Display.gsql",
     ]
 
     logger.info(f"Checking if schema needs to be created")
     if "- VERTEX EntityType" in current_schema:
         schema_res="Schema already exists, skipped."
     else:
-        file_path = "src/core/gsql/supportai/SupportAI_Schema.gsql"
+        file_path = "src/graphrag/core/gsql/supportai/SupportAI_Schema.gsql"
         with open(file_path, "r") as f:
             schema = f.read()
         schema_res = conn.gsql(
@@ -52,7 +52,7 @@ def init_supportai(conn: TigerGraphConnection, graphname: str) -> tuple[dict, di
     if "- VERTEX Image" in current_schema:
         schema_res += " Image schema already exists, skipped."
     else:
-        file_path = "src/core/gsql/supportai/SupportAI_Schema_Images.gsql"
+        file_path = "src/graphrag/core/gsql/supportai/SupportAI_Schema_Images.gsql"
         with open(file_path, "r") as f:
             image_schema = f.read()
         schema_res += " "
@@ -67,7 +67,7 @@ def init_supportai(conn: TigerGraphConnection, graphname: str) -> tuple[dict, di
         schema_res+=" Embeddding schema already exists, skipped."
     else:
         if int(ver[0]) >= 4 and int(ver[1]) >= 2:
-            file_path = "src/core/gsql/supportai/SupportAI_Schema_Native_Vector.gsql"
+            file_path = "src/graphrag/core/gsql/supportai/SupportAI_Schema_Native_Vector.gsql"
             with open(file_path, "r") as f:
                 schema = f.read()
             if embedding_dimension != 1536:
@@ -101,7 +101,7 @@ def init_supportai(conn: TigerGraphConnection, graphname: str) -> tuple[dict, di
     if "- doc_chunk_epoch_processed_index" in current_schema:
         index_res="Index already exists, skipped."
     else:
-        file_path = "src/core/gsql/supportai/SupportAI_IndexCreation.gsql"
+        file_path = "src/graphrag/core/gsql/supportai/SupportAI_IndexCreation.gsql"
         with open(file_path) as f:
             index = f.read()
         index_res = conn.gsql(
@@ -113,12 +113,12 @@ def init_supportai(conn: TigerGraphConnection, graphname: str) -> tuple[dict, di
     logger.info(f"Checking if loading job needs to be created")
     if "- CREATE LOADING JOB load_documents_content_json {" not in current_schema:
         supportai_queries.extend([
-            "src/core/gsql/supportai/SupportAI_InitialLoadJSON.gsql",
+            "src/graphrag/core/gsql/supportai/SupportAI_InitialLoadJSON.gsql",
         ])
 
     if "- CREATE LOADING JOB load_documents_content_json_with_images {" not in current_schema:
         supportai_queries.extend([
-            "src/core/gsql/supportai/SupportAI_InitialLoadJSON_WithImages.gsql",
+            "src/graphrag/core/gsql/supportai/SupportAI_InitialLoadJSON_WithImages.gsql",
         ])
 
     logger.info(f"Creating supportai queries")
@@ -351,7 +351,7 @@ def create_ingest(
     elif ingest_config.file_format.lower() == "json" or ingest_config.file_format.lower() == "multi":
         load_job_id = "load_documents_content_json"
     elif ingest_config.file_format.lower() == "csv":
-        file_path = "src/core/gsql/supportai/SupportAI_InitialLoadCSV.gsql"
+        file_path = "src/graphrag/core/gsql/supportai/SupportAI_InitialLoadCSV.gsql"
 
         with open(file_path) as f:
             ingest_template = f.read()
@@ -376,7 +376,7 @@ def create_ingest(
 
     if ingest_config.data_source.lower() in ["s3", "azure", "gcs"]:
         # check the data source and create the appropriate connection
-        file_path = "src/core/gsql/supportai/SupportAI_DataSourceCreation.gsql"
+        file_path = "src/graphrag/core/gsql/supportai/SupportAI_DataSourceCreation.gsql"
         with open(file_path) as f:
             data_stream_conn = f.read()
 
@@ -521,8 +521,8 @@ def create_ingest(
 
 
 _LOADING_JOB_GSQL_FILES = {
-    "load_documents_content_json_with_images": "src/core/gsql/supportai/SupportAI_InitialLoadJSON_WithImages.gsql",
-    "load_documents_content_json": "src/core/gsql/supportai/SupportAI_InitialLoadJSON.gsql",
+    "load_documents_content_json_with_images": "src/graphrag/core/gsql/supportai/SupportAI_InitialLoadJSON_WithImages.gsql",
+    "load_documents_content_json": "src/graphrag/core/gsql/supportai/SupportAI_InitialLoadJSON.gsql",
 }
 
 
