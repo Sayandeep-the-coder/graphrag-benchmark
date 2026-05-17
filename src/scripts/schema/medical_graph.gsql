@@ -1,8 +1,10 @@
 // TigerGraph Medical Knowledge Graph Schema
 // Designed for Clinical Polypharmacy & Symptom-to-Diagnosis Reasoning
 
+USE GLOBAL
 CREATE GRAPH MedicalGraph ()
 
+USE GLOBAL
 USE GRAPH MedicalGraph
 
 // --- VERTEX TYPES ---
