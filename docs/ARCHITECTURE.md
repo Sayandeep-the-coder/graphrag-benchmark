@@ -40,8 +40,8 @@ Medical CSVs  →  prepare_medical_data.py  →  data/medical/knowledge_base.txt
         ▼                               ▼
  Pipeline 2 ingest                 Pipeline 3 ingest
  ─────────────────                 ─────────────────
- RecursiveCharacterTextSplitter    POST /documents/batch
- chunk_size=1000, overlap=100      → GraphRAG Docker service
+ RecursiveCharacterTextSplitter    pyTigerGraph conn.ai.* helpers
+ chunk_size=1000, overlap=100      → GraphRAG Docker service rebuild
         │                               │
  Llama-text-embed-v2                    Entity + relationship extraction
  (Pinecone Inference)                   │
@@ -63,7 +63,7 @@ Example: *"What are the symptoms of Malaria?"*
 |----------|--------|---------------|
 | **1 — LLM only** | Prompt with question only → `gemma-4-26b-a4b-it` REST | Low prompt; no grounded context |
 | **2 — Basic RAG** | Embed query → Pinecone (dynamic top-K) → prompt with chunks → `gemma-4-26b-a4b-it` REST | Higher (multiple chunks in prompt) |
-| **3 — GraphRAG** | `POST /query` to GraphRAG service (`hybrid`, `hop_depth=2`) | Lower than P2 when graph context is selective |
+| **3 — GraphRAG** | `POST /{graph}/graphrag/answerquestion` to the official GraphRAG service (`hybrid`, `num_hops=2`) | Lower than P2 when graph context is selective |
 
 The dashboard computes **token reduction %** as `(P2 total tokens − P3 total tokens) / P2 total tokens`.
 
@@ -86,8 +86,9 @@ The dashboard computes **token reduction %** as `(P2 total tokens − P3 total t
 
 The `tigergraph/graphrag` container connects to TigerGraph Savanna (`TG_HOST`, credentials in `.env`) and exposes:
 
-- `POST /documents/batch` — ingest
-- `POST /query` — retrieve + generate with `retriever` and `hop_depth`
+- `POST /{graph}/graphrag/answerquestion` — retrieve + generate with `method` and `method_params`
+- `POST /{graph}/graphrag/search` — retrieval-only debug endpoint
+- pyTigerGraph `conn.ai.createDocumentIngest`, `conn.ai.runDocumentIngest`, `conn.ai.forceConsistencyUpdate` — official automation path for ingest/rebuild
 
 Internal graph schema (entities, communities, document links) is managed by the GraphRAG service.
 

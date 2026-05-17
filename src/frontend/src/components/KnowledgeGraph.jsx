@@ -90,6 +90,17 @@ const KnowledgeGraph = ({ nodes = [], links = [] }) => {
             >
               {node.id}
             </text>
+            {node.count !== undefined && (
+              <text
+                x={node.x + 12}
+                y={node.y + 18}
+                fill={getAccentColor(node.type)}
+                fillOpacity="0.75"
+                className="text-[8px] font-mono pointer-events-none uppercase tracking-widest"
+              >
+                {Number(node.count || 0).toLocaleString()}
+              </text>
+            )}
           </motion.g>
         ))}
       </svg>

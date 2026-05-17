@@ -69,9 +69,9 @@ Built for the TigerGraph GraphRAG Inference Hackathon. The repository originally
 
 | ID | Requirement |
 |----|-------------|
-| P3-01 | Ingest via GraphRAG `POST /documents/batch` |
+| P3-01 | Ingest via official pyTigerGraph GraphRAG helpers and rebuild through the GraphRAG backend |
 | P3-02 | Service builds entities/relationships in TigerGraph |
-| P3-03 | Query with configurable `hop_depth` (default 2) |
+| P3-03 | Query `/{graph}/graphrag/answerquestion` with configurable `num_hops` (default 2) |
 | P3-04 | Retrievers: `hybrid`, `community`, `sibling` |
 | P3-05 | Return answer + entities + metrics; fail gracefully if service down |
 

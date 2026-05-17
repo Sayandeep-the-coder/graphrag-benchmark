@@ -263,9 +263,7 @@ def _ecc_jobs_running(graphs: list[str], auth_header: str) -> bool:
 
 def auth(usr: str, password: str, conn=None) -> tuple[list[str], TigerGraphConnection]:
     if conn is None:
-        conn = TigerGraphConnection(
-            host=db_config["hostname"], graphname="", username=usr, password=password
-        )
+        conn = get_db_connection_pwd_manual("", usr, password)
 
     try:
         graph_list = conn.listGraphs()

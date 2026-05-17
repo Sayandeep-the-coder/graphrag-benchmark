@@ -229,7 +229,7 @@ def _run_rag_ingest():
 
 def _run_graphrag_ingest():
     from src.graphrag.pipeline.ingest import ingest_documents
-    ingest_documents()
+    ingest_documents("./data/processed", format="csv")
 
 
 @app.post("/ingest/rag", response_model=IngestStatus)
@@ -259,6 +259,70 @@ async def get_knowledge_base():
             "size_bytes": stat.st_size,
         }
 
+    def tigergraph_status() -> dict:
+        status = {
+            "available": False,
+            "counts": {},
+            "index_ready": False,
+            "message": "TigerGraph status not checked",
+        }
+        try:
+            from src.utils.tigergraph_ingest import _connection
+
+            conn = _connection()
+            for vertex_type in ["Document", "Content", "DocumentChunk", "Entity", "Community"]:
+                try:
+                    status["counts"][vertex_type] = conn.getVertexCount(vertex_type)
+                except Exception:
+                    status["counts"][vertex_type] = None
+            status["available"] = True
+            status["index_ready"] = bool(status["counts"].get("DocumentChunk", 0))
+            status["message"] = (
+                "GraphRAG chunks are searchable"
+                if status["index_ready"]
+                else "Raw documents exist, but GraphRAG chunks have not been built yet"
+            )
+        except Exception as exc:
+            status["message"] = sanitize_error(f"TigerGraph status unavailable: {exc}")
+        return status
+
+    def graph_preview(source_counts: dict, tg_status: dict) -> dict:
+        counts = tg_status.get("counts", {})
+        nodes = [
+            {"id": "Corpus", "x": 280, "y": 230, "type": "Entity"},
+            {"id": "Document", "x": 150, "y": 135, "type": "Concept", "count": counts.get("Document", 0)},
+            {"id": "Content", "x": 410, "y": 135, "type": "Concept", "count": counts.get("Content", 0)},
+            {"id": "Chunk", "x": 150, "y": 335, "type": "Action", "count": counts.get("DocumentChunk", 0)},
+            {"id": "Entity", "x": 410, "y": 335, "type": "Entity", "count": counts.get("Entity", 0)},
+            {"id": "Community", "x": 285, "y": 420, "type": "Observation", "count": counts.get("Community", 0)},
+        ]
+        links = [
+            {"source": "Corpus", "target": "Document"},
+            {"source": "Document", "target": "Content"},
+            {"source": "Content", "target": "Chunk"},
+            {"source": "Chunk", "target": "Entity"},
+            {"source": "Entity", "target": "Community"},
+        ]
+        for i, (source, count) in enumerate(sorted(source_counts.items())[:6]):
+            nodes.append(
+                {
+                    "id": source,
+                    "x": 75 + (i % 3) * 225,
+                    "y": 45 + (i // 3) * 405,
+                    "type": "Concept",
+                    "count": count,
+                }
+            )
+            links.append({"source": source, "target": "Corpus"})
+        return {"nodes": nodes, "links": links}
+
+    def with_runtime_metadata(payload: dict) -> dict:
+        tg_status = tigergraph_status()
+        payload["tigergraph"] = tg_status
+        payload["index_status"] = "ready" if tg_status.get("index_ready") else "needs_rebuild"
+        payload["graph"] = graph_preview(payload.get("source_counts", {}), tg_status)
+        return payload
+
     unified_path = os.path.join(root, "data", "processed", "unified_corpus.json")
     corpus_text_path = os.path.join(root, "data", "processed", "corpus_text.txt")
     graphrag_jsonl_path = os.path.join(root, "data", "medical", "graphrag_ingest.jsonl")
@@ -270,27 +334,18 @@ async def get_knowledge_base():
                 docs = json.load(f)
 
             source_counts = {}
-            sections = []
             for doc in docs:
                 source = doc.get("source") or doc.get("source_type") or "unknown"
                 source_counts[source] = source_counts.get(source, 0) + 1
-                title = doc.get("title") or doc.get("name") or doc.get("id") or "Untitled"
-                sections.append(
-                    f"Source: {source}\n"
-                    f"Record: {title}\n"
-                    f"{doc.get('text', '')}"
-                )
 
-            content = "\n\n---\n\n".join(sections)
-            return {
-                "content": content,
-                "total_tokens": estimate_tokens(content),
-                "documents": len(docs),
+            # Return metadata only, not the full corpus content
+            return with_runtime_metadata({
+                "local_corpus_records": len(docs),
                 "source_counts": source_counts,
                 "status": "dynamic_processed_corpus",
                 "architecture": "Generated corpus from DrugBank/seed drugs, disease-symptom mappings, WHO guidelines, and any cached PubMed/FDA data; indexed by Pinecone and traversed by TigerGraph GraphRAG.",
                 **file_info(unified_path),
-            }
+            })
         except Exception as e:
             return {"content": f"Error reading processed corpus: {str(e)}", "total_tokens": 0, "status": "error"}
 
@@ -298,17 +353,15 @@ async def get_knowledge_base():
         try:
             with open(corpus_text_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            return {
-                "content": content,
-                "total_tokens": estimate_tokens(content),
-                "documents": content.count("\n\n") + 1 if content else 0,
+            return with_runtime_metadata({
+                "local_corpus_records": content.count("\n\n") + 1 if content else 0,
                 "source_counts": {"processed_text": 1},
                 "status": "dynamic_processed_text",
                 "architecture": "Generated text corpus from the data collection pipeline; ready for Pinecone ingestion and GraphRAG extraction.",
                 **file_info(corpus_text_path),
-            }
+            })
         except Exception as e:
-            return {"content": f"Error reading processed text corpus: {str(e)}", "total_tokens": 0, "status": "error"}
+            return {"error": f"Error reading processed text corpus: {str(e)}", "status": "error"}
 
     if os.path.exists(graphrag_jsonl_path):
         try:
@@ -317,42 +370,41 @@ async def get_knowledge_base():
                 for line in f:
                     if line.strip():
                         records.append(json.loads(line))
-            content = "\n\n---\n\n".join(record.get("content", "") for record in records)
-            return {
-                "content": content,
-                "total_tokens": estimate_tokens(content),
-                "documents": len(records),
+            return with_runtime_metadata({
+                "local_corpus_records": len(records),
                 "source_counts": {"graphrag_jsonl": len(records)},
                 "status": "dynamic_graphrag_ingest",
                 "architecture": "GraphRAG JSONL ingest file generated from local medical knowledge; use the collection pipeline for the full clinical corpus.",
                 **file_info(graphrag_jsonl_path),
-            }
+            })
         except Exception as e:
-            return {"content": f"Error reading GraphRAG ingest JSONL: {str(e)}", "total_tokens": 0, "status": "error"}
+            return {"error": f"Error reading GraphRAG ingest JSONL: {str(e)}", "status": "error"}
 
     kb_path = legacy_kb_path
     if not os.path.exists(kb_path):
-        return {
-            "content": "No knowledge base found. Run python scripts/data_collection/collect_all.py to build the dynamic corpus.",
-            "total_tokens": 0,
-            "documents": 0,
+        return with_runtime_metadata({
+            "error": "No knowledge base found. Run python scripts/data_collection/collect_all.py to build the dynamic corpus.",
+            "local_corpus_records": 0,
             "source_counts": {},
             "status": "missing",
-        }
+        })
     try:
         with open(kb_path, "r", encoding="utf-8") as f:
             content = f.read()
-            return {
-                "content": content,
-                "total_tokens": estimate_tokens(content),
-                "documents": content.count("Disease:"),
+            return with_runtime_metadata({
+                "local_corpus_records": content.count("Disease:"),
                 "source_counts": {"legacy_medical_text": 1},
                 "status": "legacy_static_file",
                 "architecture": "Legacy static demo file. Run python scripts/data_collection/collect_all.py to replace this with the dynamic multi-source corpus.",
                 **file_info(kb_path),
-            }
+            })
     except Exception as e:
-        return {"content": f"Error: {str(e)}", "total_tokens": 0, "status": "error"}
+        return {"error": f"Error: {str(e)}", "status": "error"}
+
+
+@app.get("/api/knowledge-base")
+async def get_knowledge_base_alias():
+    return await get_knowledge_base()
 
 
 @app.get("/metrics/summary")

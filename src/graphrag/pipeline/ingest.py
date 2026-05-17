@@ -1,8 +1,9 @@
 """
 Pipeline 3 — GraphRAG Ingest
 
-Loads .txt documents into TigerGraph Savanna via pyTigerGraph (inline JSONL load),
-then rebuilds the GraphRAG knowledge graph through the local GraphRAG service.
+Loads documents into TigerGraph Savanna via pyTigerGraph. The default path uses
+CSV shards, then rebuilds the GraphRAG knowledge graph through the local
+GraphRAG service.
 """
 
 import argparse
@@ -18,11 +19,12 @@ from src.utils.tigergraph_ingest import ingest_to_savanna
 load_dotenv()
 
 
-def ingest_documents(docs_folder: str = "./data/medical", rebuild: bool = True):
+def ingest_documents(docs_folder: str = "./data/processed", rebuild: bool = True, format: str = "csv"):
     """Ingest documents and rebuild the GraphRAG graph."""
-    print(f"Ingesting from {docs_folder} into TigerGraph Savanna...")
-    result = ingest_to_savanna(docs_folder, rebuild=rebuild)
-    print(f"  JSONL         : {result['jsonl_path']}")
+    print(f"Ingesting from {docs_folder} into TigerGraph Savanna via {format.upper()}...")
+    result = ingest_to_savanna(docs_folder, rebuild=rebuild, format=format)
+    print(f"  Format        : {result['format']}")
+    print(f"  Load files    : {len(result['load_files'])}")
     print(f"  Documents     : {result['document_count']}")
     print(f"  Content nodes : {result['content_count']}")
     print(f"  Doc chunks    : {result.get('document_chunk_count', '?')}")
@@ -39,7 +41,8 @@ def ingest_documents(docs_folder: str = "./data/medical", rebuild: bool = True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ingest documents into TigerGraph GraphRAG.")
-    parser.add_argument("--path", type=str, default="./data/medical")
+    parser.add_argument("--path", type=str, default="./data/processed")
+    parser.add_argument("--format", choices=["csv", "jsonl"], default="csv")
     parser.add_argument("--no-rebuild", action="store_true", help="Skip knowledge-graph rebuild")
     args = parser.parse_args()
-    ingest_documents(args.path, rebuild=not args.no_rebuild)
+    ingest_documents(args.path, rebuild=not args.no_rebuild, format=args.format)

@@ -39,12 +39,18 @@ class CypherTool:
         self.conn = self._get_connection()
 
     def _get_connection(self):
+        restpp = os.getenv("TG_RESTPP_PORT", "443")
+        gs = os.getenv("TG_GSQL_PORT", "443")
         conn = TigerGraphConnection(
             host=self.host,
             username=self.username,
             password=self.password,
-            graphname=self.graphname
+            graphname=self.graphname,
+            restppPort=restpp,
+            gsPort=gs,
         )
+        if conn.restppPort == conn.gsPort and "/restpp" not in conn.restppUrl:
+            conn.restppUrl = conn.restppUrl + "/restpp"
         token = conn.getToken()[0]
         conn.apiToken = token
         return conn

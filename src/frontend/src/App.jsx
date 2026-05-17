@@ -64,20 +64,20 @@ export default function App() {
 
   useEffect(() => {
     addEvent("Initializing GraphRAG Benchmark Environment...", "info");
-    // Fetch knowledge base content on load
+    // Fetch knowledge base metadata on load
     fetch(`${API_URL}/knowledge-base`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        setKbContent(data.content || "No content found.");
-        setKbTokens(data.total_tokens || 0);
         setKbMeta(data);
-        addEvent(`Knowledge base loaded from ${data.source_path || data.status || "unknown source"}.`, "success");
+        // Compute total tokens from corpus records estimate (4 chars per token)
+        const estimatedTokens = data.local_corpus_records ? Math.round(data.local_corpus_records * 500) : 0;
+        setKbTokens(estimatedTokens);
+        addEvent(`Knowledge base loaded: ${data.local_corpus_records?.toLocaleString() || 0} records from ${data.source_path || data.status || "unknown source"}.`, "success");
       })
       .catch((err) => {
-        setKbContent(`Error loading knowledge base: ${err.message}`);
         setKbTokens(0);
         setKbMeta(null);
         addEvent(`Failed to synchronize knowledge base: ${err.message}`, "warning");
@@ -234,6 +234,15 @@ export default function App() {
         graphrag: results.graphrag?.metrics || {},
       }
     : null;
+
+  const tgCounts = kbMeta?.tigergraph?.counts || {};
+  const graphNodes = kbMeta?.graph?.nodes || [];
+  const graphLinks = kbMeta?.graph?.links || [];
+  const liveEntityCount = tgCounts.Entity ?? 0;
+  const liveRelationshipCount = Math.max(
+    0,
+    (tgCounts.Document || 0) + (tgCounts.Content || 0) + (tgCounts.DocumentChunk || 0)
+  );
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex">
@@ -508,152 +517,132 @@ export default function App() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="p-8 flex gap-8 h-[calc(100vh-80px)] overflow-hidden"
+                className="p-8 h-[calc(100vh-80px)] overflow-auto"
               >
-                 <div className="flex-1 card-premium overflow-hidden flex flex-col p-8 relative">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-accent-neon/5 blur-[100px] pointer-events-none"></div>
-                    
-                    <div className="flex items-center justify-between mb-8 relative z-10">
-                       <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-accent-neon/10 flex items-center justify-center border border-accent-neon/20">
-                             <Globe className="w-6 h-6 text-accent-neon" />
-                          </div>
-                          <div>
-                             <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Knowledge_Explorer</h2>
-                             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
-                               <span className="w-1.5 h-1.5 rounded-full bg-accent-neon animate-pulse"></span>
-                               Real-time_Entity_Relationship_Mapping
-                             </p>
-                          </div>
-                       </div>
-                       <div className="flex gap-4">
-                          <div className="metric-box min-w-[140px] bg-black/40 border-white/5">
-                             <span className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Total_Entities</span>
-                             <span className="text-lg font-mono text-accent-neon">14,292</span>
-                          </div>
-                          <div className="metric-box min-w-[140px] bg-black/40 border-white/5">
-                             <span className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Relationships</span>
-                             <span className="text-lg font-mono text-accent-info">84,103</span>
-                          </div>
-                       </div>
+                <div className="max-w-[1600px] mx-auto space-y-8">
+                  {/* Header */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-accent-info/10 flex items-center justify-center border border-accent-info/20">
+                      <Database className="w-6 h-6 text-accent-info" />
                     </div>
-                    
-                    <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/5 group">
-                       <div className="absolute inset-0 bg-grid opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                       <KnowledgeGraph />
+                    <div>
+                      <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Data & Knowledge Management</h2>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Ingestion • Mapping • Live Updates</p>
                     </div>
-                 </div>
+                  </div>
 
-                 <aside className="w-[420px] flex flex-col gap-6">
-                    <div className="card-premium flex-1 flex flex-col p-8 relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-full h-1 bg-accent-info/30"></div>
-                      
-                      <div className="mb-8">
-                        <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-accent-neon shadow-[0_0_10px_rgba(0,255,163,0.8)]"></div>
-                          Knowledge_Base_Source
-                        </h2>
+                  {/* Two-column layout */}
+                  <div className="grid grid-cols-2 gap-8">
+                    {/* Left: Ingestion Manager */}
+                    <div className="card-premium flex flex-col p-8 relative">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-accent-warning/5 blur-[100px] pointer-events-none"></div>
+                      <div className="relative z-10">
+                        <h3 className="text-sm font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-accent-warning"></span>
+                          Data Ingestion Pipeline
+                        </h3>
+                        <IngestionManager 
+                          onIngestStarted={(type, msg) => {
+                            setEvents(prev => [{
+                              timestamp: new Date().toLocaleTimeString(),
+                              service: "BACKEND",
+                              message: `Pipeline ingest started [${type}]: ${msg}`,
+                              type: "info"
+                            }, ...prev]);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Right: Knowledge Base Stats */}
+                    <div className="card-premium flex flex-col p-8 relative">
+                      <div className="absolute top-0 left-0 w-64 h-64 bg-accent-neon/5 blur-[100px] pointer-events-none"></div>
+                      <div className="relative z-10">
+                        <h3 className="text-sm font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-accent-neon"></span>
+                          Knowledge Base Status
+                        </h3>
                         
-                        <div className="grid grid-cols-2 gap-4 mb-8">
-                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Total_Tokens</p>
-                            <p className="text-sm font-mono text-accent-neon">
-                              {kbLoading ? "..." : kbTokens.toLocaleString()}
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          <div className="bg-black/40 rounded-lg p-4 border border-white/5">
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-2">Records</p>
+                            <p className="text-2xl font-mono text-accent-neon font-bold">
+                              {kbLoading ? "..." : (kbMeta?.local_corpus_records || 0).toLocaleString()}
                             </p>
                           </div>
-                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Index_Status</p>
+                          <div className="bg-black/40 rounded-lg p-4 border border-white/5">
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-2">Status</p>
                             <div className="flex items-center gap-2">
-                               <div className={`w-1 h-1 rounded-full animate-pulse ${
-                                 kbMeta?.status?.startsWith("dynamic") ? "bg-accent-neon" : "bg-accent-warning"
-                               }`}></div>
-                               <p className={`text-[10px] font-mono uppercase tracking-widest ${
-                                 kbMeta?.status?.startsWith("dynamic") ? "text-accent-neon" : "text-accent-warning"
-                               }`}>
-                                 {kbLoading ? "Loading" : (kbMeta?.status || "Unknown").replaceAll("_", " ")}
-                               </p>
+                              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                                kbMeta?.index_status === "needs_rebuild" ? "bg-accent-warning" : "bg-accent-neon"
+                              }`}></div>
+                              <p className={`text-[11px] font-mono font-bold ${
+                                kbMeta?.index_status === "needs_rebuild" ? "text-accent-warning" : "text-accent-neon"
+                              }`}>
+                                {kbLoading ? "..." : (kbMeta?.index_status || "unknown").replaceAll("_", " ")}
+                              </p>
                             </div>
-                          </div>
-                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Documents</p>
-                            <p className="text-sm font-mono text-accent-info">
-                              {kbLoading ? "..." : (kbMeta?.documents || 0).toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 shadow-inner">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-1">Source_File</p>
-                            <p className="text-[10px] font-mono text-gray-300 truncate" title={kbMeta?.source_path || ""}>
-                              {kbLoading ? "..." : (kbMeta?.source_path || "missing")}
-                            </p>
                           </div>
                         </div>
 
-                        <div className="bg-accent-info/5 border border-accent-info/20 rounded-xl p-4 mb-8 relative group overflow-hidden">
-                           <div className="absolute top-0 left-0 w-1 h-full bg-accent-info opacity-50"></div>
-                           <p className="text-[9px] text-accent-info font-black uppercase tracking-widest mb-2 italic flex items-center gap-2">
-                              <Cpu size={10} />
-                              Technical_Architecture
-                           </p>
-                           <p className="text-[11px] text-gray-400 leading-relaxed font-medium">
-                             {kbMeta?.architecture || "Knowledge base metadata is loading from the backend."}
-                           </p>
-                           {kbMeta?.source_counts && (
-                             <div className="mt-4 flex flex-wrap gap-2">
-                               {Object.entries(kbMeta.source_counts).map(([source, count]) => (
-                                 <span
-                                   key={source}
-                                   className="px-2 py-1 rounded bg-black/30 border border-white/5 text-[8px] font-mono text-gray-400 uppercase tracking-widest"
-                                 >
-                                   {source}: {count}
-                                 </span>
-                               ))}
-                             </div>
-                           )}
+                        {/* TigerGraph Counts */}
+                        <div className="bg-accent-neon/5 border border-accent-neon/20 rounded-lg p-4 mb-6">
+                          <p className="text-[9px] text-accent-neon font-black uppercase tracking-widest mb-3 italic">TigerGraph Live Counts</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {kbLoading ? (
+                              <p className="text-[10px] text-gray-500 col-span-2 italic">Loading...</p>
+                            ) : (
+                              kbMeta?.tigergraph?.counts ? (
+                                Object.entries(kbMeta.tigergraph.counts).map(([name, count]) => (
+                                  <div key={name} className="bg-black/30 rounded p-2 border border-white/5">
+                                    <p className="text-[8px] text-gray-500 font-mono uppercase">{name}</p>
+                                    <p className="text-lg font-mono text-accent-neon font-bold">{(count ?? 0).toLocaleString()}</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[10px] text-gray-500 col-span-2">No TigerGraph data</p>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex-1 overflow-hidden flex flex-col">
-                         <div className="flex items-center justify-between mb-3 px-1">
-                           <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Raw_Content_Payload</span>
-                           <span className="text-[9px] text-accent-neon/40 font-mono italic animate-pulse">STREAMING_READY</span>
-                         </div>
-                         <div className="flex-1 overflow-y-auto bg-[#050505] rounded-2xl p-6 border border-white/5 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] custom-scrollbar relative">
-                          <div className="absolute top-0 left-0 w-full h-12 bg-gradient-to-b from-accent-neon/10 to-transparent pointer-events-none animate-scan opacity-50"></div>
-                          
-                          {kbLoading ? (
-                            <div className="flex flex-col items-center justify-center h-full gap-4">
-                              <div className="w-10 h-10 border-2 border-accent-neon/10 border-t-accent-neon rounded-full animate-spin"></div>
-                              <span className="text-[10px] font-mono text-gray-600 animate-pulse uppercase tracking-widest">Hydrating_Context...</span>
-                            </div>
-                          ) : (
-                        <pre className="text-[11px] text-gray-500 font-mono whitespace-pre-wrap leading-relaxed selection:bg-accent-neon/30">
-                              {kbContent}
-                            </pre>
-                          )}
+                        {/* Source Breakdown */}
+                        <div>
+                          <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest mb-2 italic">Source Distribution</p>
+                          <div className="space-y-2">
+                            {kbLoading ? (
+                              <p className="text-[10px] text-gray-500">Loading...</p>
+                            ) : (
+                              kbMeta?.source_counts ? (
+                                Object.entries(kbMeta.source_counts).map(([source, count]) => (
+                                  <div key={source} className="flex justify-between items-center bg-black/20 rounded px-3 py-2 border border-white/5">
+                                    <span className="text-[9px] text-gray-400 font-mono uppercase">{source}</span>
+                                    <span className="text-[10px] text-accent-info font-mono font-bold">{count}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[10px] text-gray-500">No source data</p>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                 </aside>
-              </motion.div>
-            )}
+                  </div>
 
-            {activeTab === "ingestion" && (
-              <motion.div
-                key="ingestion"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-              >
-                <IngestionManager 
-                  onIngestStarted={(type, msg) => {
-                    setEvents(prev => [{
-                      timestamp: new Date().toLocaleTimeString(),
-                      service: "BACKEND",
-                      message: `Pipeline ingest started [${type}]: ${msg}`,
-                      type: "info"
-                    }, ...prev]);
-                  }}
-                />
+                  {/* Full-width Knowledge Graph */}
+                  <div className="card-premium p-8 relative">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-accent-info/5 blur-[120px] pointer-events-none"></div>
+                    <h3 className="text-sm font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2 relative z-10">
+                      <span className="w-2 h-2 rounded-full bg-accent-info"></span>
+                      Knowledge Graph Visualization
+                    </h3>
+                    <div className="h-[500px] rounded-2xl overflow-hidden border border-white/5 bg-black/40 relative z-10">
+                      <KnowledgeGraph nodes={graphNodes} links={graphLinks} />
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
 
@@ -682,15 +671,15 @@ export default function App() {
                           <Terminal className="w-6 h-6 text-accent-warning" />
                        </div>
                        <div>
-                         <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">System_Logs</h2>
-                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Low-level_Event_Stream_Telemetry</p>
+                         <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">System Events</h2>
+                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Real-time activity log</p>
                        </div>
                     </div>
                     <button 
                       onClick={() => setEvents([])}
                       className="px-6 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] text-gray-500 hover:text-white hover:border-red-500/30 transition-all uppercase font-black tracking-widest"
                     >
-                      Purge Logs
+                      Clear Events
                     </button>
                  </div>
                  <SystemConsole events={events} fullWidth />
