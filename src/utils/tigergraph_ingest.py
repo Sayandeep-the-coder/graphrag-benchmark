@@ -97,12 +97,17 @@ def _iter_document_records(docs_folder: str):
             }
 
 
-def build_jsonl(docs_folder: str) -> Path:
-    docs_path = Path(docs_folder).resolve()
-    jsonl_path = docs_path / "graphrag_ingest.jsonl"
+def _collect_document_records(docs_folder: str) -> list[dict]:
     records = list(_iter_document_records(docs_folder))
     if not records:
         raise FileNotFoundError(f"No ingestible documents under {docs_folder}")
+    return records
+
+
+def build_jsonl(docs_folder: str) -> Path:
+    docs_path = Path(docs_folder).resolve()
+    jsonl_path = docs_path / "graphrag_ingest.jsonl"
+    records = _collect_document_records(docs_folder)
 
     with jsonl_path.open("w", encoding="utf-8") as out:
         for record in records:
@@ -117,9 +122,7 @@ def build_csv_shards(
     rows_per_file: int = 100,
 ) -> list[Path]:
     docs_path = Path(docs_folder).resolve()
-    records = list(_iter_document_records(docs_folder))
-    if not records:
-        raise FileNotFoundError(f"No ingestible documents under {docs_folder}")
+    records = _collect_document_records(docs_folder)
 
     shard_dir = Path(output_dir).resolve() if output_dir else docs_path / "graphrag_csv_shards"
     shard_dir.mkdir(parents=True, exist_ok=True)
@@ -152,6 +155,32 @@ def build_csv_shards(
     return shard_paths
 
 
+def build_jsonl_shards(
+    docs_folder: str,
+    *,
+    output_dir: str | None = None,
+    rows_per_file: int = 100,
+) -> list[Path]:
+    docs_path = Path(docs_folder).resolve()
+    records = _collect_document_records(docs_folder)
+
+    shard_dir = Path(output_dir).resolve() if output_dir else docs_path / "graphrag_jsonl_shards"
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    for old_file in shard_dir.glob("documents_*.jsonl"):
+        old_file.unlink()
+
+    shard_paths: list[Path] = []
+    rows_per_file = max(1, rows_per_file)
+    for shard_index in range(0, len(records), rows_per_file):
+        shard_records = records[shard_index : shard_index + rows_per_file]
+        shard_path = shard_dir / f"documents_{(shard_index // rows_per_file) + 1:04d}.jsonl"
+        with shard_path.open("w", encoding="utf-8") as out:
+            for record in shard_records:
+                out.write(json.dumps(record, ensure_ascii=False) + "\n")
+        shard_paths.append(shard_path)
+    return shard_paths
+
+
 def _ensure_csv_loading_job(conn, graphname: str, load_job: str = LOAD_JOB_CSV) -> str:
     schema = conn.gsql(f"USE GRAPH {graphname}\nLS")
     marker = f"CREATE LOADING JOB {load_job}"
@@ -170,6 +199,37 @@ CREATE LOADING JOB {load_job} {{
     if isinstance(result, str) and ("failed" in result.lower() or "error" in result.lower()):
         raise RuntimeError(f"Failed to create CSV loading job {load_job}: {result}")
     return load_job
+
+
+def _ensure_json_loading_job(conn, graphname: str, load_job: str = LOAD_JOB_JSON) -> str:
+    schema = conn.gsql(f"USE GRAPH {graphname}\nLS")
+    marker = f"CREATE LOADING JOB {load_job}"
+    if marker in schema:
+        return load_job
+
+    gsql = f"""
+CREATE LOADING JOB {load_job} {{
+    DEFINE FILENAME DocumentContent;
+    LOAD DocumentContent TO VERTEX Document VALUES(gsql_lower($\"doc_id\"), gsql_current_time_epoch(0), _, _) USING JSON_FILE=\"true\";
+    LOAD DocumentContent TO VERTEX Content VALUES(gsql_lower($\"doc_id\"), $\"doc_type\", $\"content\", gsql_current_time_epoch(0)) USING JSON_FILE=\"true\";
+    LOAD DocumentContent TO EDGE HAS_CONTENT VALUES(gsql_lower($\"doc_id\") Document, gsql_lower($\"doc_id\") Content) USING JSON_FILE=\"true\";
+}}
+"""
+    result = conn.gsql(f"USE GRAPH {graphname}\nBEGIN\n{gsql}\nEND\n")
+    if isinstance(result, str) and ("failed" in result.lower() or "error" in result.lower()):
+        raise RuntimeError(f"Failed to create JSON loading job {load_job}: {result}")
+    return load_job
+
+
+def _run_shard_loads(conn, shard_paths: list[Path], load_job: str, *, sep: str | None = None) -> list:
+    loads = []
+    for shard_path in shard_paths:
+        if sep is None:
+            result = conn.runLoadingJobWithFile(str(shard_path), FILE_TAG, load_job)
+        else:
+            result = conn.runLoadingJobWithFile(str(shard_path), FILE_TAG, load_job, sep=sep)
+        loads.append(result)
+    return loads
 
 
 def _parse_load_result(load_result) -> dict:
@@ -211,6 +271,8 @@ def ingest_to_savanna(
     """
     conn = _connection()
     graphname = os.getenv("TG_GRAPH_NAME", "GraphRAG").strip() or "GraphRAG"
+    records = _collect_document_records(docs_folder)
+    source_document_count = len(records)
 
     graphrag_host = (graphrag_url or os.getenv("GRAPHRAG_SERVICE_URL", "http://localhost:8000")).rstrip("/")
     init = None
@@ -221,30 +283,49 @@ def ingest_to_savanna(
         init = {"skipped": True, "reason": str(exc)}
 
     if format.lower() == "jsonl":
-        jsonl_path = build_jsonl(docs_folder)
-        payload = jsonl_path.read_text(encoding="utf-8")
-        load = conn.runLoadingJobWithData(
-            payload,
-            fileTag=FILE_TAG,
-            jobName=LOAD_JOB_JSON,
-            eol="\n",
-        )
-        load_files = [str(jsonl_path)]
-        load_summary = [_parse_load_result(load)]
+        load_job = _ensure_json_loading_job(conn, graphname)
+        jsonl_paths = build_jsonl_shards(docs_folder, rows_per_file=rows_per_file)
+        load_files = [str(path) for path in jsonl_paths]
+        load = _run_shard_loads(conn, jsonl_paths, load_job)
+        load_summary = []
+        for path, result in zip(jsonl_paths, load):
+            parsed = _parse_load_result(result)
+            parsed["file"] = str(path)
+            load_summary.append(parsed)
     elif format.lower() == "csv":
         load_job = _ensure_csv_loading_job(conn, graphname)
         csv_paths = build_csv_shards(docs_folder, rows_per_file=rows_per_file)
         load_files = [str(path) for path in csv_paths]
+        load = _run_shard_loads(conn, csv_paths, load_job, sep="|")
         load_summary = []
-        load = []
-        for csv_path in csv_paths:
-            result = conn.runLoadingJobWithFile(str(csv_path), FILE_TAG, load_job, sep="|")
-            load.append(result)
+        for path, result in zip(csv_paths, load):
             parsed = _parse_load_result(result)
-            parsed["file"] = str(csv_path)
+            parsed["file"] = str(path)
             load_summary.append(parsed)
+
+        document_count = conn.getVertexCount("Document")
+        if document_count < source_document_count:
+            jsonl_load_job = _ensure_json_loading_job(conn, graphname)
+            jsonl_paths = build_jsonl_shards(docs_folder, rows_per_file=rows_per_file)
+            jsonl_load = _run_shard_loads(conn, jsonl_paths, jsonl_load_job)
+            load.extend(jsonl_load)
+            load_files.extend(str(path) for path in jsonl_paths)
+            for path, result in zip(jsonl_paths, jsonl_load):
+                parsed = _parse_load_result(result)
+                parsed["file"] = str(path)
+                parsed["fallback"] = "jsonl"
+                load_summary.append(parsed)
     else:
         raise ValueError("format must be 'csv' or 'jsonl'")
+
+    document_count = conn.getVertexCount("Document")
+    if document_count < source_document_count:
+        raise RuntimeError(
+            "Document ingest appears incomplete: expected at least "
+            f"{source_document_count} source records but TigerGraph currently has "
+            f"{document_count} Document vertices. Check the loading-job logs and the "
+            "generated shard files under data/processed."
+        )
 
     result = {
         "format": format.lower(),
@@ -252,6 +333,7 @@ def ingest_to_savanna(
         "initialize": init,
         "load": load,
         "load_summary": load_summary,
+        "source_document_count": source_document_count,
         "document_count": conn.getVertexCount("Document"),
         "content_count": conn.getVertexCount("Content"),
     }
@@ -264,7 +346,12 @@ def ingest_to_savanna(
         else:
             deadline = time.time() + rebuild_timeout
             while time.time() < deadline:
-                progress = conn.ai.checkConsistencyProgress("graphrag")
+                try:
+                    progress = conn.ai.checkConsistencyProgress("graphrag")
+                except Exception as exc:
+                    result["rebuild_warning"] = f"Progress check failed: {exc}"
+                    break
+
                 result["rebuild_progress"] = progress
                 status = ""
                 if isinstance(progress, dict):
@@ -276,3 +363,61 @@ def ingest_to_savanna(
     result["document_chunk_count"] = conn.getVertexCount("DocumentChunk")
     result["entity_count"] = conn.getVertexCount("Entity")
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Load documents into TigerGraph GraphRAG.")
+    parser.add_argument("--path", type=str, default="./data/processed", help="Path to documents folder")
+    parser.add_argument("--format", choices=["csv", "jsonl"], default="csv", help="Load format")
+    parser.add_argument("--dry-run", action="store_true", help="Validate corpus without connecting to TigerGraph")
+    parser.add_argument("--no-rebuild", action="store_true", help="Skip graph rebuild after loading")
+    parser.add_argument("--rows-per-shard", type=int, default=100, help="Rows per shard file")
+    args = parser.parse_args()
+
+    if args.dry_run:
+        print(f"[DRY-RUN] Validating corpus at: {args.path}")
+        try:
+            records = _collect_document_records(args.path)
+            print(f"✓ Source corpus: {len(records)} documents")
+            
+            if args.format == "csv":
+                print(f"\n[DRY-RUN] Building CSV shards...")
+                csv_paths = build_csv_shards(args.path, rows_per_file=args.rows_per_shard)
+                print(f"✓ Generated {len(csv_paths)} CSV shards")
+                for i, path in enumerate(csv_paths[:3], 1):
+                    size = path.stat().st_size
+                    print(f"  Shard {i}: {path.name} ({size:,} bytes)")
+                if len(csv_paths) > 3:
+                    print(f"  ... and {len(csv_paths) - 3} more")
+                print(f"✓ Location: {csv_paths[0].parent}")
+            else:
+                print(f"\n[DRY-RUN] Building JSONL shards...")
+                jsonl_paths = build_jsonl_shards(args.path, rows_per_file=args.rows_per_shard)
+                print(f"✓ Generated {len(jsonl_paths)} JSONL shards")
+                for i, path in enumerate(jsonl_paths[:3], 1):
+                    size = path.stat().st_size
+                    print(f"  Shard {i}: {path.name} ({size:,} bytes)")
+                if len(jsonl_paths) > 3:
+                    print(f"  ... and {len(jsonl_paths) - 3} more")
+                print(f"✓ Location: {jsonl_paths[0].parent}")
+            
+            print(f"\n[SUCCESS] Corpus validation passed. Ready for TigerGraph ingest.")
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            exit(1)
+    else:
+        print(f"Ingesting from {args.path} into TigerGraph Savanna via {args.format.upper()}...")
+        result = ingest_to_savanna(args.path, rebuild=not args.no_rebuild, format=args.format, rows_per_file=args.rows_per_shard)
+        print(f"  Format        : {result['format']}")
+        print(f"  Load files    : {len(result['load_files'])}")
+        print(f"  Documents     : {result['document_count']}")
+        print(f"  Content nodes : {result['content_count']}")
+        print(f"  Doc chunks    : {result.get('document_chunk_count', '?')}")
+        print(f"  Entities      : {result.get('entity_count', '?')}")
+        if result.get("rebuild_error"):
+            print(f"  [WARN] Rebuild: {result['rebuild_error']}")
+        if result.get("rebuild_warning"):
+            print(f"  [WARN] Rebuild: {result['rebuild_warning']}")
+        print("\n[SUCCESS] Savanna load complete.")

@@ -31,6 +31,8 @@ def ingest_documents(docs_folder: str = "./data/processed", rebuild: bool = True
     print(f"  Entities      : {result.get('entity_count', '?')}")
     if result.get("rebuild_error"):
         print(f"  [WARN] Rebuild: {result['rebuild_error']}")
+    if result.get("rebuild_warning"):
+        print(f"  [WARN] Rebuild: {result['rebuild_warning']}")
     print("\n[SUCCESS] Savanna load complete.")
     if result.get("document_chunk_count", 0) == 0:
         print(
