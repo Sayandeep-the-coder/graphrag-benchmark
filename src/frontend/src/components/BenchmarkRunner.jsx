@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Play, 
-  Terminal, 
-  Settings2, 
-  Activity, 
-  CheckCircle2, 
-  Timer, 
+import {
+  Play,
+  Terminal,
+  Settings2,
+  Activity,
+  CheckCircle2,
+  Timer,
   FileJson,
   Zap,
   BarChart3,
@@ -32,7 +32,7 @@ const BenchmarkRunner = () => {
   const [reports, setReports] = useState([]);
   const [showReports, setShowReports] = useState(false);
   const [loadingReports, setLoadingReports] = useState(false);
-  
+
   // Connect to SSE for logs
   useEffect(() => {
     let eventSource;
@@ -41,7 +41,7 @@ const BenchmarkRunner = () => {
       eventSource.onmessage = (event) => {
         const log = JSON.parse(event.data);
         setLogs(prev => [...prev, log].slice(-100)); // Keep last 100 logs
-        
+
         // Simple heuristic to update progress based on log messages
         if (log.message.includes('Starting Benchmark')) setProgress(5);
         if (log.message.includes('Accuracy evaluation')) setProgress(90);
@@ -51,7 +51,7 @@ const BenchmarkRunner = () => {
           setCurrentTask('Completed');
           fetchSummary();
         }
-        
+
         // Extract query progress if available: [1/5]
         const match = log.message.match(/\[(\d+)\/(\d+)\]/);
         if (match) {
@@ -61,12 +61,12 @@ const BenchmarkRunner = () => {
           setCurrentTask(`Processing Query ${current}/${total}`);
         }
       };
-      
+
       eventSource.onerror = () => {
         eventSource.close();
       };
     }
-    
+
     return () => {
       if (eventSource) eventSource.close();
     };
@@ -107,7 +107,7 @@ const BenchmarkRunner = () => {
     setProgress(0);
     setIsRunning(true);
     setCurrentTask('Initializing...');
-    
+
     try {
       await fetch(`${API_URL}/benchmark/run?light=${isLite}`, {
         method: 'POST'
@@ -138,10 +138,10 @@ const BenchmarkRunner = () => {
         </div>
 
         <div className="flex items-center gap-2">
-           <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${isRunning ? 'bg-accent-neon/20 text-accent-neon' : 'bg-gray-800 text-gray-500'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-accent-neon animate-pulse' : 'bg-gray-600'}`}></div>
-              {isRunning ? 'Engine_Active' : 'Engine_Idle'}
-           </div>
+          <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${isRunning ? 'bg-accent-neon/20 text-accent-neon' : 'bg-gray-800 text-gray-500'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-accent-neon animate-pulse' : 'bg-gray-600'}`}></div>
+            {isRunning ? 'Engine_Active' : 'Engine_Idle'}
+          </div>
         </div>
       </div>
 
@@ -153,9 +153,9 @@ const BenchmarkRunner = () => {
               <Settings2 size={12} className="text-accent-info" />
               Benchmark_Parameters
             </h3>
-            
+
             <div className="space-y-4">
-              <div 
+              <div
                 onClick={() => !isRunning && setIsLite(true)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${isLite ? 'bg-accent-info/10 border-accent-info/30 ring-1 ring-accent-info/20' : 'bg-black/20 border-white/5 grayscale opacity-60'}`}
               >
@@ -166,7 +166,7 @@ const BenchmarkRunner = () => {
                 <p className="text-[10px] text-gray-500 leading-tight">5 strategic queries covering all clinical categories. 2-minute runtime.</p>
               </div>
 
-              <div 
+              <div
                 onClick={() => !isRunning && setIsLite(false)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${!isLite ? 'bg-accent-warning/10 border-accent-warning/30 ring-1 ring-accent-warning/20' : 'bg-black/20 border-white/5 grayscale opacity-60'}`}
               >
@@ -178,14 +178,13 @@ const BenchmarkRunner = () => {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={startBenchmark}
               disabled={isRunning}
-              className={`w-full mt-8 flex items-center justify-center gap-3 py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs transition-all ${
-                isRunning 
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-white text-black hover:bg-accent-info hover:shadow-[0_0_25px_rgba(0,209,255,0.4)] active:scale-95'
-              }`}
+              className={`w-full mt-8 flex items-center justify-center gap-3 py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs transition-all ${isRunning
+                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  : 'bg-white text-black hover:bg-accent-info hover:shadow-[0_0_25px_rgba(0,209,255,0.4)] active:scale-95'
+                }`}
             >
               {isRunning ? (
                 <>
@@ -202,7 +201,7 @@ const BenchmarkRunner = () => {
           </div>
 
           {latestMetrics && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="card-premium p-6 bg-accent-info/5 border-accent-info/20"
@@ -237,7 +236,7 @@ const BenchmarkRunner = () => {
               <Activity size={12} />
               Realtime_Progress
             </h3>
-            
+
             <div className="space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px] font-mono text-gray-400 uppercase tracking-tighter">
@@ -245,7 +244,7 @@ const BenchmarkRunner = () => {
                   <span>{progress}%</span>
                 </div>
                 <div className="h-2 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     className="h-full bg-gradient-to-r from-accent-info to-accent-neon rounded-full shadow-[0_0_15px_rgba(0,255,163,0.3)]"
@@ -272,26 +271,26 @@ const BenchmarkRunner = () => {
         {/* Console / Output */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between px-2">
-             <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2">
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2">
               <Terminal size={12} className="text-accent-neon" />
               Live_Standard_Output
             </span>
             <div className="flex items-center gap-3">
-               <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent-neon shadow-[0_0_5px_rgba(0,255,163,0.5)]"></div>
-                  <span className="text-[8px] font-mono text-gray-600">STDOUT</span>
-               </div>
-               <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent-warning"></div>
-                  <span className="text-[8px] font-mono text-gray-600">STDERR</span>
-               </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent-neon shadow-[0_0_5px_rgba(0,255,163,0.5)]"></div>
+                <span className="text-[8px] font-mono text-gray-600">STDOUT</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent-warning"></div>
+                <span className="text-[8px] font-mono text-gray-600">STDERR</span>
+              </div>
             </div>
           </div>
-          
+
           <div className="h-[500px]">
             <SystemConsole events={logs} onClear={() => setLogs([])} />
           </div>
-          
+
           <div className="bg-black/20 border border-white/5 rounded-2xl p-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
@@ -302,7 +301,7 @@ const BenchmarkRunner = () => {
                 <p className="text-[10px] text-gray-600">Evaluation reports are automatically persisted to ./results</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={fetchReports}
               className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-black uppercase text-gray-400 hover:text-white transition-all flex items-center gap-2"
             >
@@ -342,14 +341,14 @@ const BenchmarkRunner = () => {
                       <History className="text-accent-info" size={20} />
                       <h3 className="text-sm font-black text-white uppercase tracking-widest">Benchmark_History</h3>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowReports(false)}
                       className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-colors"
                     >
                       <RefreshCw size={18} className="rotate-45" />
                     </button>
                   </div>
-                  
+
                   <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                     {reports.length === 0 ? (
                       <div className="text-center py-20 text-gray-600 font-mono text-xs uppercase tracking-widest">
@@ -357,7 +356,7 @@ const BenchmarkRunner = () => {
                       </div>
                     ) : (
                       reports.map((report, idx) => (
-                        <div 
+                        <div
                           key={idx}
                           className="p-4 bg-white/5 border border-white/5 rounded-xl hover:border-white/20 transition-all group cursor-pointer"
                           onClick={() => {

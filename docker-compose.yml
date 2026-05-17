@@ -10,6 +10,7 @@ services:
     volumes:
       - ./src/configs:/code/configs:ro
       - ./data:/code/data:ro
+      - ./graphrag/common:/common:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8000
     networks:
       - app-network

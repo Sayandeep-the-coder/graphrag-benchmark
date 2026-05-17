@@ -88,7 +88,7 @@ CREATE OR REPLACE QUERY graphrag_louvain_init(UINT max_hop = 10, UINT n_batches 
                                 s.@community_k_in_map += (t.@community_id -> wt)
                             END
                         POST-ACCUM
-                            // ∆Q if s is moved out of its current community
+                            // delta Q if s is moved out of its current community
                             s.@delta_Q_remove = 2 * s.@k_self_loop - 2 * s.@k_in + s.@k * (s.@community_sum_total - s.@k) / @@m,
                             s.@k_in = 0,
                             s.@best_move = Move(@@min_double, s, to_string(s.id)); // reset best move
@@ -132,7 +132,7 @@ CREATE OR REPLACE QUERY graphrag_louvain_init(UINT max_hop = 10, UINT n_batches 
         // remove SwapNodes (don't need to be changed)
         ChangedNodes = ChangedNodes MINUS SwapNodes;
 
-        // Update node communities (based on max ∆Q)
+        // Update node communities (based on max delta Q)
         SwapNodes = SELECT s FROM ChangedNodes:s
                     POST-ACCUM
                         s.@community_id = s.@best_move.community, // move the node
@@ -140,7 +140,7 @@ CREATE OR REPLACE QUERY graphrag_louvain_init(UINT max_hop = 10, UINT n_batches 
                         s.@to_change_community = FALSE;
         @@move_cnt += ChangedNodes.size();
 
-        // Get all neighbours of the changed node that do not belong to the node’s new community
+        // Get all neighbours of the changed node that do not belong to the node's new community
         Candidates = SELECT t FROM ChangedNodes:s -(_:e)-> Entity:t
                      WHERE t.@community_id != s.@community_id;
     END;

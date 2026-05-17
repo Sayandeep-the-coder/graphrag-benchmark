@@ -40,7 +40,7 @@ class BaseRetriever:
 
     def _install_query(self, query_name):
         self.logger.info(f"Installing query {query_name}")
-        with open(f"src/core/gsql/supportai/retrievers/{query_name}.gsql", "r") as f:
+        with open(f"src/core/gsql/supportai/retrievers/{query_name}.gsql", "r", encoding="utf-8") as f:
             query = f.read()
         res = self.conn.gsql(
             "USE GRAPH "

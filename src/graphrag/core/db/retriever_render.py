@@ -90,7 +90,7 @@ def render_retriever_body(
 
 
 def load_template(query_name: str, retriever_dir: str = _RETRIEVER_DIR) -> str:
-    return (Path(retriever_dir) / f"{query_name}.gsql").read_text()
+    return (Path(retriever_dir) / f"{query_name}.gsql").read_text(encoding="utf-8")
 
 
 def render_retrievers(

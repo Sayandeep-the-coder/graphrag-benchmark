@@ -59,7 +59,7 @@ class CypherTool:
         }
         
         try:
-            resp = requests.post(url, json=payload, timeout=20)
+            resp = requests.post(url, json=payload, timeout=90)
             resp.raise_for_status()
             cypher = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
             
@@ -69,8 +69,9 @@ class CypherTool:
             print(f"  [CYPHER] Generated: {cypher}")
             
             # 2. Run in TigerGraph
-            # Note: We use INTERPRET OPENCYPHER for ad-hoc queries
-            results = self.conn.runOpenCypher(cypher)
+            # Note: We use INTERPRET OPENCYPHER for ad-hoc queries via conn.gsql
+            gsql_query = f"USE GRAPH {self.graphname}\nINTERPRET OPENCYPHER QUERY () {{\n{cypher}\n}}"
+            results = self.conn.gsql(gsql_query)
             
             return str(results)
             
